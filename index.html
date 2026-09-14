@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JO-TAP | 培訓簽到現場廣播系統</title>
+  <title>JO-TAP | 現場簽到投影中樞</title>
   <link rel="stylesheet" href="style.css">
-  <!-- 採用全球最穩定、零外部依賴的原生 QR 生成庫 -->
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="config.js"></script>
 </head>
@@ -14,10 +13,9 @@
 <div class="card">
   <header>
     <div>
-      <h1 id="i18n-header-title">東淦工程 · 現場簽到廣播系統</h1>
-      <span class="badge" id="i18n-badge">內部試點 (限額 100 人)</span>
+      <h1 id="i18n-header-title">東淦工程 · 現場簽到投影中樞</h1>
+      <span class="badge" id="i18n-badge">現場投影版</span>
     </div>
-    <!-- 雙語切換開關 -->
     <div class="lang-switch">
       <button type="button" class="btn-lang active" onclick="switchLanguage('zh')">繁中</button>
       <button type="button" class="btn-lang" onclick="switchLanguage('en')">EN</button>
@@ -33,14 +31,23 @@
       </div>
 
       <div class="form-group">
+        <label for="trainerSelect" id="i18n-lbl-trainer-select">主講者快捷選擇</label>
+        <select id="trainerSelect" onchange="handleTrainerSelect(this.value)">
+          <option value="">-- 請選擇常設講者或手動輸入 --</option>
+          <option value="jackylaw|Jacky Law">Jacky Law (HRD)</option>
+          <option value="safety|Safety Officer">安全主任 (Safety)</option>
+          <option value="custom">✏️ 其他 / 手動輸入</option>
+        </select>
+      </div>
+
+      <div class="form-group" id="groupTrainerName">
         <label for="trainerName" id="i18n-lbl-trainer">主講者姓名</label>
         <input type="text" id="trainerName" placeholder="例如：陳大文" required>
       </div>
 
-      <div class="form-group">
+      <div class="form-group" id="groupTrainerEmail">
         <label for="trainerEmailPrefix" id="i18n-lbl-email">主講者公司電郵前綴</label>
         <div class="email-box">
-          <!-- 徹底清除 jackylaw 預設字樣 -->
           <input type="text" id="trainerEmailPrefix" placeholder="trainer.name" required>
           <span>@jumboorient.com.hk</span>
         </div>
@@ -52,7 +59,7 @@
     <!-- 投影顯示區 -->
     <div class="display-box" id="displayBox">
       <div id="idleView">
-        <p style="color: var(--text-muted); font-size: 14px;" id="i18n-idle-text">填妥左側資料後<br>點擊按鈕直接開啟投影</p>
+        <p style="color: var(--text-muted); font-size: 14px;" id="i18n-idle-text">填妥左側資料後<br>點擊按鈕直接開啟現場投影</p>
       </div>
 
       <div id="activeView" style="display: none; width: 100%;">
@@ -62,16 +69,21 @@
         <!-- QR Code 容器 -->
         <div id="qrcode-box"></div>
         
-        <p style="font-size: 14px; font-weight: 600;" id="i18n-scan-hint">請使用手機相機掃描 QR Code 登記出席</p>
+        <p style="font-size: 15px; font-weight: 600; margin: 10px 0 4px 0;" id="i18n-scan-hint">請使用手機相機掃描 QR Code 登記出席</p>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;" id="i18n-scan-subhint">如遇網絡微弱，請連接現場公司 Wi-Fi 重新載入</p>
         
-        <p class="privacy-text" id="i18n-privacy-text">
-          【個資聲明】本簽到僅限東淦內部出勤核對與 HRF-043 存檔，受公司資訊政策嚴密保護。
+        <p class="privacy-text" id="i18n-privacy-text" style="font-size: 11px; color: #6b7280; line-height: 1.4; border-top: 1px dashed #e5e7eb; padding-top: 8px;">
+          【個資收集聲明】本簽到資料（工號、姓名、部門）僅用於本場出勤核對、培訓時數統計及符合合規要求之 HRF-043 紀錄存檔。資料保存期依公司內部人事政策執行，如需查閱或更正請聯絡人力資源組。
+        </p>
+
+        <p class="paper-backup-alert" style="font-size: 11px; color: #b91c1c; font-weight: 500; margin: 4px 0 10px 0;">
+          ⚠️ 若現場網絡持續中斷，請即時啟用 HRF-043 紙本簽到表備用。
         </p>
 
         <div class="action-links">
-          <button onclick="executeFullscreen()" id="i18n-btn-fs">全螢幕投影 (F11)</button>
-          <button onclick="openFallbackModal()" id="i18n-btn-planb">現場手動補簽 (Plan B)</button>
-          <button onclick="endSession()" style="color: #dc2626;" id="i18n-btn-end">結束本場培訓</button>
+          <button type="button" onclick="executeFullscreen()" id="i18n-btn-fs">全螢幕投影</button>
+          <button type="button" onclick="openFallbackModal()" id="i18n-btn-planb">現場手動補簽 (Plan B)</button>
+          <button type="button" onclick="endSession()" style="color: #dc2626;" id="i18n-btn-end">結束本場培訓</button>
         </div>
       </div>
     </div>
@@ -81,21 +93,21 @@
 <!-- Plan B 彈窗 -->
 <div class="modal" id="fallbackModal">
   <div class="modal-content">
-    <h3 style="margin-bottom: 8px; font-size: 16px;" id="i18n-modal-title">現場手動代簽 (Plan B)</h3>
-    <p style="font-size: 12px; color: #6b7280; margin-bottom: 12px;" id="i18n-modal-desc">
-      當前場次：<strong id="modalSessionId"></strong><br>
-      資料將自動注入微軟後端流水線，確保與現場簽到即時合流。
+    <h3 style="margin-bottom: 8px; font-size: 16px;" id="i18n-modal-title">現場手動補簽 (Plan B)</h3>
+    <p style="font-size: 12px; color: #4b5563; margin-bottom: 12px;" id="i18n-modal-desc">
+      當前場次：<strong id="modalSessionId" style="color: #003366;"></strong><br>
+      若員工手機無法掃碼，請使用此終端開啟預先載入場次代碼的 Microsoft Forms 官方頁面代填。
     </p>
     
-    <div class="form-group">
-      <input type="text" id="manualStaffNo" placeholder="職員編號 (Staff ID)">
-    </div>
-    <div class="form-group">
-      <input type="text" id="manualStaffName" placeholder="中文姓名 (Full Name)">
+    <div style="background-color: #f3f4f6; border-radius: 6px; padding: 10px; margin-bottom: 14px; text-align: left; font-size: 12px; color: #374151;">
+      <strong>代簽指引：</strong><br>
+      1. 點擊下方按鈕將於新分頁開啟已鎖定場次編號的正式簽到表單。<br>
+      2. 填入員工「職員編號」與「中文姓名」並送出。<br>
+      3. 資料直接寫入 SharePoint 後台。
     </div>
 
-    <button class="btn-primary" id="i18n-modal-submit" onclick="submitRealPlanB()">開啟代登分頁並送出</button>
-    <button onclick="closeFallbackModal()" style="width: 100%; background: none; border: none; margin-top: 10px; font-size: 13px; color: #6b7280; cursor: pointer;" id="i18n-modal-cancel">取消</button>
+    <button class="btn-primary" id="i18n-modal-submit" onclick="submitRealPlanB()">開啟已帶入場次之補簽表單 ↗</button>
+    <button type="button" onclick="closeFallbackModal()" style="width: 100%; background: none; border: none; margin-top: 10px; font-size: 13px; color: #6b7280; cursor: pointer;" id="i18n-modal-cancel">關閉返回投影</button>
   </div>
 </div>
 

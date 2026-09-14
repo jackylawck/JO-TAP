@@ -54,6 +54,36 @@ header h1 {
   font-size: 12px;
   padding: 4px 10px;
   border-radius: 20px;
+  display: inline-block;
+  margin-top: 4px;
+}
+
+/* 雙語切換開關 */
+.lang-switch {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-lang {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  padding: 5px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s ease;
+}
+
+.btn-lang:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.btn-lang.active {
+  background: white;
+  color: var(--primary);
+  border-color: white;
 }
 
 .grid {
@@ -163,12 +193,18 @@ input:focus {
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
   margin: 10px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 #qrcode-box canvas,
 #qrcode-box img {
   image-rendering: -moz-crisp-edges;
   image-rendering: pixelated;
+  display: block;
+  max-width: 100%;
+  height: auto;
 }
 
 .privacy-text {
@@ -180,7 +216,7 @@ input:focus {
 }
 
 .action-links {
-  margin-top: 12px;
+  margin-top: 14px;
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
@@ -196,7 +232,11 @@ input:focus {
   color: #4b5563;
 }
 
-/* 巨型全螢幕投影模式 (60vmin) */
+.action-links button:hover {
+  color: var(--primary);
+}
+
+/* 巨型全螢幕投影模式 (55vmin) */
 :fullscreen {
   background: white !important;
   padding: 24px !important;
@@ -213,21 +253,21 @@ input:focus {
 }
 
 :fullscreen h2 {
-  font-size: 28px !important;
+  font-size: 32px !important;
   margin-bottom: 8px !important;
 }
 
 :fullscreen .session-tag {
-  font-size: 16px !important;
-  padding: 6px 14px !important;
+  font-size: 18px !important;
+  padding: 6px 16px !important;
 }
 
 :fullscreen .privacy-text {
   font-size: 13px !important;
-  max-width: 600px !important;
+  max-width: 650px !important;
 }
 
-/* 真 Plan B 手動代簽 Modal */
+/* 手動代簽 Modal (Plan B) */
 .modal {
   display: none;
   position: fixed;

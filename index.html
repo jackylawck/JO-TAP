@@ -3,67 +3,89 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JO-TAP | 培訓簽到投影中樞</title>
+  <title>JO-TAP | 培訓簽到現場廣播系統</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" 
           integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1U4izKhNUEZGKN+ZPZDv50v8g9Ri8OXqwj31AvkvPfr0df4MHQ==" 
           crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="config.js"></script>
 </head>
 <body>
 
-<div class="container" id="appContainer">
+<div class="card">
   <header>
-    <h1>JO-TAP · 培訓簽到投影中樞</h1>
-    <p>適用於內部培訓場次識別與表單路由</p>
+    <h1>東淦工程 · 現場簽到廣播系統</h1>
+    <span class="badge">內部試點 (限額 100 人)</span>
   </header>
 
-  <div class="content">
-    <div class="form-panel">
+  <div class="grid">
+    <!-- 培訓師開場設定區 -->
+    <div class="controls" id="setupPanel">
       <div class="form-group">
-        <label for="formsUrl">Microsoft Forms 收集連結 (Base URL)</label>
-        <input type="url" id="formsUrl" placeholder="https://forms.office.com/Pages/ResponsePage.aspx?id=..." required>
-        <div class="help-text">在 Forms 按「收集回應」複製之完整連結</div>
-      </div>
-
-      <div class="form-group">
-        <label for="fieldId">Session 預填參數名稱 (Pre-fill Parameter Key)</label>
-        <input type="text" id="fieldId" placeholder="例如：r88a1b2c3d4e..." value="r88a1b2c3d4e">
-        <div class="help-text">從 Forms「取得預先填寫的連結」中取得之題目 GUID</div>
+        <label for="trainingTitle">培訓課程名稱</label>
+        <input type="text" id="trainingTitle" placeholder="例如：高空工作安全訓練" required>
       </div>
 
       <div class="form-group">
-        <label for="trainingName">培訓名稱</label>
-        <input type="text" id="trainingName" placeholder="例如：高空工作安全訓練" required>
+        <label for="trainerName">主講者姓名</label>
+        <input type="text" id="trainerName" placeholder="例如：陳大文" required>
       </div>
 
       <div class="form-group">
-        <label for="trainerEmail">主講者公司電郵</label>
-        <input type="email" id="trainerEmail" placeholder="user@company.com" required>
-      </div>
-
-      <button class="btn-action" onclick="initiateSession()">生成簽到 QR Code</button>
-    </div>
-
-    <div class="display-panel" id="displayArea">
-      <div id="emptyState" style="color: #6c757d;">
-        <p>請於左方配置資訊後生成投影碼</p>
-      </div>
-
-      <div id="activeState" style="display: none; width: 100%;">
-        <div class="session-tag" id="lblSessionId">SESSION-ID</div>
-        <h2 id="lblTitle" style="font-size: 18px; margin-bottom: 6px;">--</h2>
-        
-        <div id="qrcode-box"></div>
-        
-        <p style="font-size: 13px; font-weight: 500;">請使用手機相機掃描 QR Code 進行登記</p>
-        
-        <div class="privacy-notice">
-          【個人資料收集聲明】本簽到登記僅用於內部培訓出席紀錄核實與審計留存，資料將受組織權限嚴格保護。
+        <label for="trainerEmailPrefix">主講者公司電郵前綴</label>
+        <div class="email-box">
+          <input type="text" id="trainerEmailPrefix" placeholder="jackylaw" required>
+          <span>@jumboorient.com.hk</span>
         </div>
+      </div>
 
-        <button class="btn-action fullscreen-btn" onclick="toggleFullscreen()">全螢幕投影模式</button>
+      <button class="btn-primary" onclick="startSession()">🚀 一鍵生成並全螢幕投影</button>
+    </div>
+
+    <!-- 投影顯示中樞 -->
+    <div class="display-box" id="displayBox">
+      <div id="idleView">
+        <p style="color: var(--text-muted); font-size: 14px;">填妥左側資料後<br>點擊按鈕直接開啟投影</p>
+      </div>
+
+      <div id="activeView" style="display: none; width: 100%;">
+        <div class="session-tag" id="lblSession">TRN-XXXX</div>
+        <h2 id="lblTitle" style="font-size: 20px; margin-bottom: 6px;">培訓主題</h2>
+        <div id="qrcode-box"></div>
+        <p style="font-size: 13px; font-weight: 600;">請使用手機相機掃描 QR Code 登記出席</p>
+        
+        <p class="privacy-text">
+          【個資聲明】本簽到僅限東淦內部出勤核對與 HRF-043 存檔，受公司資訊政策嚴密保護。
+        </p>
+
+        <div class="action-links">
+          <button onclick="executeFullscreen()">全螢幕投影 (F11)</button>
+          <button onclick="openFallbackModal()">現場手動補簽 (Plan B)</button>
+          <button onclick="endSession()" style="color: #dc2626;">結束本場培訓</button>
+        </div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- 真 Plan B：後端合流手動代簽彈窗 -->
+<div class="modal" id="fallbackModal">
+  <div class="modal-content">
+    <h3 style="margin-bottom: 8px; font-size: 16px;">現場手動代簽 (Plan B)</h3>
+    <p style="font-size: 12px; color: #6b7280; margin-bottom: 12px;">
+      當前場次：<strong id="modalSessionId"></strong><br>
+      資料將自動注入微軟後端流水線，確保與現場簽到即時合流[cite: 1]。
+    </p>
+    
+    <div class="form-group">
+      <input type="text" id="manualStaffNo" placeholder="職員編號 (例如: E1023)">[cite: 1]
+    </div>
+    <div class="form-group">
+      <input type="text" id="manualStaffName" placeholder="中文姓名 (例如: 李大明)">[cite: 1]
+    </div>
+
+    <button class="btn-primary" onclick="submitRealPlanB()">開啟代登分頁並送出</button>
+    <button onclick="closeFallbackModal()" style="width: 100%; background: none; border: none; margin-top: 10px; font-size: 13px; color: #6b7280; cursor: pointer;">取消</button>
   </div>
 </div>
 

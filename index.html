@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JO-TAP | 培訓簽到投影中樞</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" 
+          integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1U4izKhNUEZGKN+ZPZDv50v8g9Ri8OXqwj31AvkvPfr0df4MHQ==" 
+          crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+<body>
+
+<div class="container" id="appContainer">
+  <header>
+    <h1>JO-TAP · 培訓簽到投影中樞</h1>
+    <p>適用於內部培訓場次識別與表單路由</p>
+  </header>
+
+  <div class="content">
+    <div class="form-panel">
+      <div class="form-group">
+        <label for="formsUrl">Microsoft Forms 收集連結 (Base URL)</label>
+        <input type="url" id="formsUrl" placeholder="https://forms.office.com/Pages/ResponsePage.aspx?id=..." required>
+        <div class="help-text">在 Forms 按「收集回應」複製之完整連結</div>
+      </div>
+
+      <div class="form-group">
+        <label for="fieldId">Session 預填參數名稱 (Pre-fill Parameter Key)</label>
+        <input type="text" id="fieldId" placeholder="例如：r88a1b2c3d4e..." value="r88a1b2c3d4e">
+        <div class="help-text">從 Forms「取得預先填寫的連結」中取得之題目 GUID</div>
+      </div>
+
+      <div class="form-group">
+        <label for="trainingName">培訓名稱</label>
+        <input type="text" id="trainingName" placeholder="例如：高空工作安全訓練" required>
+      </div>
+
+      <div class="form-group">
+        <label for="trainerEmail">主講者公司電郵</label>
+        <input type="email" id="trainerEmail" placeholder="user@company.com" required>
+      </div>
+
+      <button class="btn-action" onclick="initiateSession()">生成簽到 QR Code</button>
+    </div>
+
+    <div class="display-panel" id="displayArea">
+      <div id="emptyState" style="color: #6c757d;">
+        <p>請於左方配置資訊後生成投影碼</p>
+      </div>
+
+      <div id="activeState" style="display: none; width: 100%;">
+        <div class="session-tag" id="lblSessionId">SESSION-ID</div>
+        <h2 id="lblTitle" style="font-size: 18px; margin-bottom: 6px;">--</h2>
+        
+        <div id="qrcode-box"></div>
+        
+        <p style="font-size: 13px; font-weight: 500;">請使用手機相機掃描 QR Code 進行登記</p>
+        
+        <div class="privacy-notice">
+          【個人資料收集聲明】本簽到登記僅用於內部培訓出席紀錄核實與審計留存，資料將受組織權限嚴格保護。
+        </div>
+
+        <button class="btn-action fullscreen-btn" onclick="toggleFullscreen()">全螢幕投影模式</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

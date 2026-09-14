@@ -1,10 +1,11 @@
 :root {
-  --primary: #c8102e;
-  --primary-dark: #9b0b22;
-  --bg: #f8f9fa;
-  --card-bg: #ffffff;
-  --text: #212529;
-  --border: #dee2e6;
+  --primary: #c8102e; /* 東淦企業紅 */
+  --primary-hover: #9e0c24;
+  --bg: #f3f4f6;
+  --surface: #ffffff;
+  --text-main: #111827;
+  --text-muted: #4b5563;
+  --border: #e5e7eb;
 }
 
 * {
@@ -15,52 +16,55 @@
 }
 
 body {
-  background: var(--bg);
-  color: var(--text);
-  padding: 24px;
+  background-color: var(--bg);
+  color: var(--text-main);
   min-height: 100vh;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
+  padding: 16px;
 }
 
-.container {
-  background: var(--card-bg);
+.card {
+  background: var(--surface);
   width: 100%;
-  max-width: 960px;
-  border-radius: 8px;
+  max-width: 920px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   border: 1px solid var(--border);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   overflow: hidden;
 }
 
 header {
   background: var(--primary);
-  color: #fff;
+  color: #ffffff;
   padding: 18px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 header h1 {
   font-size: 20px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
-header p {
+.badge {
+  background: rgba(255, 255, 255, 0.2);
   font-size: 12px;
-  opacity: 0.85;
-  margin-top: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
 }
 
-.content {
+.grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1.2fr;
   gap: 24px;
   padding: 24px;
 }
 
 @media (max-width: 768px) {
-  .content {
+  .grid {
     grid-template-columns: 1fr;
   }
 }
@@ -73,50 +77,65 @@ label {
   display: block;
   font-size: 13px;
   font-weight: 600;
-  margin-bottom: 4px;
-  color: #495057;
+  margin-bottom: 5px;
 }
 
 input {
   width: 100%;
-  padding: 8px 12px;
+  padding: 10px 12px;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 14px;
   outline: none;
+  transition: border 0.2s;
 }
 
 input:focus {
   border-color: var(--primary);
 }
 
-.help-text {
-  font-size: 11px;
-  color: #6c757d;
-  margin-top: 3px;
+.email-box {
+  display: flex;
+  align-items: center;
 }
 
-.btn-action {
+.email-box input {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.email-box span {
+  background: #e5e7eb;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-left: none;
+  border-top-right-radius: 6px;
+  border-bottom-right-radius: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.btn-primary {
   width: 100%;
-  padding: 10px;
   background: var(--primary);
-  color: #fff;
+  color: white;
   border: none;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  margin-top: 8px;
-}
-
-.btn-action:hover {
-  background: var(--primary-dark);
-}
-
-.display-panel {
-  background: #fdfdfd;
-  border: 1px dashed var(--border);
   border-radius: 6px;
+  padding: 12px;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-primary:hover {
+  background: var(--primary-hover);
+}
+
+.display-box {
+  background: #fafafa;
+  border: 2px dashed var(--border);
+  border-radius: 8px;
   padding: 20px;
   display: flex;
   flex-direction: column;
@@ -127,36 +146,105 @@ input:focus {
 }
 
 .session-tag {
-  background: #e9ecef;
-  color: #495057;
+  background: #fee2e2;
+  color: var(--primary);
+  font-family: monospace;
+  font-weight: 700;
+  font-size: 13px;
   padding: 4px 10px;
   border-radius: 4px;
-  font-size: 12px;
-  font-family: monospace;
-  font-weight: 600;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
+/* 像素級銳利化投影，防止大螢幕模糊 */
 #qrcode-box {
-  background: #fff;
-  padding: 16px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  margin: 12px 0;
+  background: white;
+  padding: 14px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  margin: 10px 0;
 }
 
-.privacy-notice {
+#qrcode-box canvas,
+#qrcode-box img {
+  image-rendering: -moz-crisp-edges;
+  image-rendering: pixelated;
+}
+
+.privacy-text {
   font-size: 11px;
-  color: #868e96;
-  margin-top: 16px;
-  line-height: 1.4;
-}
-
-.fullscreen-btn {
-  background: #495057;
+  color: #6b7280;
   margin-top: 8px;
+  line-height: 1.4;
+  max-width: 320px;
 }
 
-.fullscreen-btn:hover {
-  background: #343a40;
+.action-links {
+  margin-top: 12px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.action-links button {
+  background: none;
+  border: none;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+  color: #4b5563;
+}
+
+/* 巨型全螢幕投影模式 (60vmin) */
+:fullscreen {
+  background: white !important;
+  padding: 24px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+:fullscreen #qrcode-box canvas,
+:fullscreen #qrcode-box img {
+  width: 55vmin !important;
+  height: 55vmin !important;
+}
+
+:fullscreen h2 {
+  font-size: 28px !important;
+  margin-bottom: 8px !important;
+}
+
+:fullscreen .session-tag {
+  font-size: 16px !important;
+  padding: 6px 14px !important;
+}
+
+:fullscreen .privacy-text {
+  font-size: 13px !important;
+  max-width: 600px !important;
+}
+
+/* 真 Plan B 手動代簽 Modal */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.modal-content {
+  background: white;
+  padding: 24px;
+  border-radius: 8px;
+  max-width: 440px;
+  width: 90%;
 }

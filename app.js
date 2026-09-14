@@ -55,16 +55,13 @@ const I18N_DICT = {
 let currentLang = localStorage.getItem('JO_LANG') || 'zh';
 
 window.addEventListener('DOMContentLoaded', () => {
-  // 套用語系
   switchLanguage(currentLang);
 
-  // 載入上次講者（若無紀錄則保持為空，不帶任何預設人名）
   const lastTrainer = localStorage.getItem('JO_LAST_TRAINER') || '';
   const lastPrefix = localStorage.getItem('JO_LAST_PREFIX') || '';
   document.getElementById('trainerName').value = lastTrainer;
   document.getElementById('trainerEmailPrefix').value = lastPrefix;
 
-  // 檢查當日未過期 Session
   const saved = localStorage.getItem('JO_CURRENT_SESSION');
   if (saved) {
     try {
@@ -87,12 +84,10 @@ function switchLanguage(lang) {
   localStorage.setItem('JO_LANG', lang);
   const dict = I18N_DICT[lang];
 
-  // 更新按鈕樣式
   document.querySelectorAll('.btn-lang').forEach(btn => btn.classList.remove('active'));
   const activeBtn = document.querySelector(`.btn-lang[onclick="switchLanguage('${lang}')"]`);
   if (activeBtn) activeBtn.classList.add('active');
 
-  // 更新介面文字
   document.getElementById('i18n-header-title').innerText = dict.headerTitle;
   document.getElementById('i18n-badge').innerText = dict.badge;
   document.getElementById('i18n-lbl-title').innerText = dict.lblTitle;
@@ -164,22 +159,21 @@ function renderActive(sessionId, title, url) {
   document.getElementById('lblSession').innerText = sessionId;
   document.getElementById('lblTitle').innerText = title;
 
-  // 繪製 QR Code (強制清除舊內容，重新繪製)
   const qrBox = document.getElementById('qrcode-box');
   qrBox.innerHTML = '';
 
+  // 尺寸鎖定 280px，改用 M 級容錯，大幅降低點陣密度
   try {
     new QRCode(qrBox, {
       text: url,
-      width: 500,
-      height: 500,
+      width: 280,
+      height: 280,
       colorDark: "#000000",
       colorLight: "#ffffff",
-      correctLevel: QRCode.CorrectLevel.H
+      correctLevel: QRCode.CorrectLevel.M
     });
   } catch (err) {
-    // 備援：若 qrcodejs 載入異常，直接採用極速開源 Image QR 服務，100% 確保出圖
-    qrBox.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(url)}" style="width:100%;height:100%;max-width:320px;" alt="QR Code">`;
+    qrBox.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(url)}" style="width:280px;height:280px;" alt="QR Code">`;
   }
 }
 

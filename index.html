@@ -5,87 +5,97 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>JO-TAP | 培訓簽到現場廣播系統</title>
   <link rel="stylesheet" href="style.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" 
-          integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1U4izKhNUEZGKN+ZPZDv50v8g9Ri8OXqwj31AvkvPfr0df4MHQ==" 
-          crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <!-- 採用全球最穩定、零外部依賴的原生 QR 生成庫 -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="config.js"></script>
 </head>
 <body>
 
 <div class="card">
   <header>
-    <h1>東淦工程 · 現場簽到廣播系統</h1>
-    <span class="badge">內部試點 (限額 100 人)</span>
+    <div>
+      <h1 id="i18n-header-title">東淦工程 · 現場簽到廣播系統</h1>
+      <span class="badge" id="i18n-badge">內部試點 (限額 100 人)</span>
+    </div>
+    <!-- 雙語切換開關 -->
+    <div class="lang-switch">
+      <button type="button" class="btn-lang active" onclick="switchLanguage('zh')">繁中</button>
+      <button type="button" class="btn-lang" onclick="switchLanguage('en')">EN</button>
+    </div>
   </header>
 
   <div class="grid">
-    <!-- 培訓師開場設定區 -->
+    <!-- 設定面版 -->
     <div class="controls" id="setupPanel">
       <div class="form-group">
-        <label for="trainingTitle">培訓課程名稱</label>
+        <label for="trainingTitle" id="i18n-lbl-title">培訓課程名稱</label>
         <input type="text" id="trainingTitle" placeholder="例如：高空工作安全訓練" required>
       </div>
 
       <div class="form-group">
-        <label for="trainerName">主講者姓名</label>
+        <label for="trainerName" id="i18n-lbl-trainer">主講者姓名</label>
         <input type="text" id="trainerName" placeholder="例如：陳大文" required>
       </div>
 
       <div class="form-group">
-        <label for="trainerEmailPrefix">主講者公司電郵前綴</label>
+        <label for="trainerEmailPrefix" id="i18n-lbl-email">主講者公司電郵前綴</label>
         <div class="email-box">
-          <input type="text" id="trainerEmailPrefix" placeholder="jackylaw" required>
+          <!-- 徹底清除 jackylaw 預設字樣 -->
+          <input type="text" id="trainerEmailPrefix" placeholder="trainer.name" required>
           <span>@jumboorient.com.hk</span>
         </div>
       </div>
 
-      <button class="btn-primary" onclick="startSession()">🚀 一鍵生成並全螢幕投影</button>
+      <button class="btn-primary" id="i18n-btn-start" onclick="startSession()">🚀 一鍵生成並全螢幕投影</button>
     </div>
 
-    <!-- 投影顯示中樞 -->
+    <!-- 投影顯示區 -->
     <div class="display-box" id="displayBox">
       <div id="idleView">
-        <p style="color: var(--text-muted); font-size: 14px;">填妥左側資料後<br>點擊按鈕直接開啟投影</p>
+        <p style="color: var(--text-muted); font-size: 14px;" id="i18n-idle-text">填妥左側資料後<br>點擊按鈕直接開啟投影</p>
       </div>
 
       <div id="activeView" style="display: none; width: 100%;">
         <div class="session-tag" id="lblSession">TRN-XXXX</div>
-        <h2 id="lblTitle" style="font-size: 20px; margin-bottom: 6px;">培訓主題</h2>
-        <div id="qrcode-box"></div>
-        <p style="font-size: 13px; font-weight: 600;">請使用手機相機掃描 QR Code 登記出席</p>
+        <h2 id="lblTitle" style="font-size: 22px; margin-bottom: 8px;">培訓主題</h2>
         
-        <p class="privacy-text">
+        <!-- QR Code 容器 -->
+        <div id="qrcode-box"></div>
+        
+        <p style="font-size: 14px; font-weight: 600;" id="i18n-scan-hint">請使用手機相機掃描 QR Code 登記出席</p>
+        
+        <p class="privacy-text" id="i18n-privacy-text">
           【個資聲明】本簽到僅限東淦內部出勤核對與 HRF-043 存檔，受公司資訊政策嚴密保護。
         </p>
 
         <div class="action-links">
-          <button onclick="executeFullscreen()">全螢幕投影 (F11)</button>
-          <button onclick="openFallbackModal()">現場手動補簽 (Plan B)</button>
-          <button onclick="endSession()" style="color: #dc2626;">結束本場培訓</button>
+          <button onclick="executeFullscreen()" id="i18n-btn-fs">全螢幕投影 (F11)</button>
+          <button onclick="openFallbackModal()" id="i18n-btn-planb">現場手動補簽 (Plan B)</button>
+          <button onclick="endSession()" style="color: #dc2626;" id="i18n-btn-end">結束本場培訓</button>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- 真 Plan B：後端合流手動代簽彈窗 -->
+<!-- Plan B 彈窗 -->
 <div class="modal" id="fallbackModal">
   <div class="modal-content">
-    <h3 style="margin-bottom: 8px; font-size: 16px;">現場手動代簽 (Plan B)</h3>
-    <p style="font-size: 12px; color: #6b7280; margin-bottom: 12px;">
+    <h3 style="margin-bottom: 8px; font-size: 16px;" id="i18n-modal-title">現場手動代簽 (Plan B)</h3>
+    <p style="font-size: 12px; color: #6b7280; margin-bottom: 12px;" id="i18n-modal-desc">
       當前場次：<strong id="modalSessionId"></strong><br>
-      資料將自動注入微軟後端流水線，確保與現場簽到即時合流[cite: 1]。
+      資料將自動注入微軟後端流水線，確保與現場簽到即時合流。
     </p>
     
     <div class="form-group">
-      <input type="text" id="manualStaffNo" placeholder="職員編號 (例如: E1023)">[cite: 1]
+      <input type="text" id="manualStaffNo" placeholder="職員編號 (Staff ID)">
     </div>
     <div class="form-group">
-      <input type="text" id="manualStaffName" placeholder="中文姓名 (例如: 李大明)">[cite: 1]
+      <input type="text" id="manualStaffName" placeholder="中文姓名 (Full Name)">
     </div>
 
-    <button class="btn-primary" onclick="submitRealPlanB()">開啟代登分頁並送出</button>
-    <button onclick="closeFallbackModal()" style="width: 100%; background: none; border: none; margin-top: 10px; font-size: 13px; color: #6b7280; cursor: pointer;">取消</button>
+    <button class="btn-primary" id="i18n-modal-submit" onclick="submitRealPlanB()">開啟代登分頁並送出</button>
+    <button onclick="closeFallbackModal()" style="width: 100%; background: none; border: none; margin-top: 10px; font-size: 13px; color: #6b7280; cursor: pointer;" id="i18n-modal-cancel">取消</button>
   </div>
 </div>
 

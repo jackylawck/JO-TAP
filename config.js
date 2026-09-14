@@ -1,28 +1,23 @@
 /**
- * JO-TAP 系統全域設定 (統一表單對齊 HRF-043 版)
- * 特點：
- * 1. 任何人均可填寫 (支援有 / 無 M365 帳號之全體同事)
- * 2. 學員 QR 碼嚴格僅帶入 sessionId
- * 3. Plan B 備用代簽共用同一表單，自動帶入 SessionID、工號、姓名及預設組別
+ * JO-TAP 全域設定檔 (東淦 HRF-043 正式環境)
  */
 const APP_CONFIG = {
-  // 1. 微軟表單收集回應完整連結 (請在 Forms 設定為「任何人均可回應」)
-  formsBaseUrl: "https://forms.office.com/Pages/ResponsePage.aspx?id=YOUR_TENANT_ID",
+  // 1. 東淦 HRF-043 微軟表單收集回應完整連結
+  formsBaseUrl: "https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=SekoVCLlN0icGNrZmiJqgHdrsKMMnEBEh_14oAG6bhBUNzJPMVNXSE5JVFNFMEhJWVBMQjFWNjZBSC4u",
   
-  // 2. Q1「培訓場次編號 (Session ID)」的預填參數 Key
-  sessionFieldKey: "r88a1b2c3d4e",
+  // 2. Q1: 培訓場次編號 (Session ID) 真實預填 Key
+  sessionFieldKey: "r47260548a38342cfb911e2d607927fcc",
 
-  // 3. 備用手動補簽 (Plan B：工友無手機或斷網時，講師於筆電代填，共用同一張 Form)
-  fallbackFormsUrl: "https://forms.office.com/Pages/ResponsePage.aspx?id=YOUR_TENANT_ID",
+  // 3. Plan B 手動代簽 (共用同一張表單與後端通道)
+  fallbackFormsUrl: "https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=SekoVCLlN0icGNrZmiJqgHdrsKMMnEBEh_14oAG6bhBUNzJPMVNXSE5JVFNFMEhJWVBMQjFWNjZBSC4u",
   fallbackFields: {
-    sessionId: "r88a1b2c3d4e", // Q1: Session ID Key
-    staffNo: "ra1b2c3d4e5f",   // Q3: 職員編號 Key
-    staffName: "rb2c3d4e5f6a", // Q4: 中文姓名 Key
-    dept: "rc3d4e5f6a7b"       // Q5: 部門 Key (選填，可直接代填預設組別)
+    sessionId: "r47260548a38342cfb911e2d607927fcc", // Q1: Session ID
+    staffNo: "r193df0d8073b4d7dac5f5066afac5ea8",     // Q3: 職員號碼
+    staffName: "r0e471e3898314fbda8f4bc503a387210"   // Q4: 中文姓名
   },
 
-  // 4. 系統邊界與過期控制
+  // 4. 企業網域與系統邊界
   emailDomain: "@jumboorient.com.hk",
-  maxAttendees: 100,           // 100 人試作容量上限
-  sessionTimeoutHours: 4       // 4 小時自動失效防跨日污染
+  maxAttendees: 100,           // 100 人試作限額
+  sessionTimeoutHours: 4       // 4 小時自動失效
 };

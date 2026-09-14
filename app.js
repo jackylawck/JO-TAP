@@ -1,75 +1,25 @@
-// 雙語語言包定義
-const I18N_DICT = {
-  zh: {
-    headerTitle: "東淦工程 · 現場簽到廣播系統",
-    badge: "內部試點 (限額 100 人)",
-    lblTitle: "培訓課程名稱",
-    titlePlaceholder: "例如：高空工作安全訓練",
-    lblTrainer: "主講者姓名",
-    trainerPlaceholder: "例如：陳大文",
-    lblEmail: "主講者公司電郵前綴",
-    emailPlaceholder: "trainer.name",
-    btnStart: "🚀 一鍵生成並全螢幕投影",
-    idleText: "填妥左側資料後<br>點擊按鈕直接開啟投影",
-    scanHint: "請使用手機相機掃描 QR Code 登記出席",
-    privacyText: "【個資聲明】本簽到僅限東淦內部出勤核對與 HRF-043 存檔，受公司資訊政策嚴密保護。",
-    btnFs: "全螢幕投影 (F11)",
-    btnPlanB: "現場手動補簽 (Plan B)",
-    btnEnd: "結束本場培訓",
-    modalTitle: "現場手動代簽 (Plan B)",
-    modalDesc: "當前場次：{SESSION}<br>資料將自動注入微軟後端流水線，確保與現場簽到即時合流。",
-    staffNoPlaceholder: "職員編號 (例如: E1023)",
-    staffNamePlaceholder: "中文姓名 (例如: 李大明)",
-    modalSubmit: "開啟代登分頁並送出",
-    modalCancel: "取消",
-    confirmEnd: "確認結束當前培訓場次？",
-    alertInput: "請完整輸入培訓名稱、姓名及電郵前綴！"
-  },
-  en: {
-    headerTitle: "Jumbo Orient · Training Attendance Portal",
-    badge: "Internal Pilot (Max 100 Pax)",
-    lblTitle: "Training Course Title",
-    titlePlaceholder: "e.g., Working at Height Safety Training",
-    lblTrainer: "Trainer Full Name",
-    trainerPlaceholder: "e.g., Chan Tai Man",
-    lblEmail: "Trainer Corporate Email Prefix",
-    emailPlaceholder: "trainer.name",
-    btnStart: "🚀 Launch & Fullscreen Projection",
-    idleText: "Fill in the details on the left<br>and click Launch to generate QR code",
-    scanHint: "Please scan the QR Code with your mobile camera to check in",
-    privacyText: "[Privacy Notice] This check-in is strictly for internal attendance verification and HRF-043 archiving under corporate security policy.",
-    btnFs: "Fullscreen Mode (F11)",
-    btnPlanB: "Manual Check-in (Plan B)",
-    btnEnd: "End Session",
-    modalTitle: "Manual Check-in (Plan B)",
-    modalDesc: "Current Session: {SESSION}<br>Data will be submitted directly to backend M365 pipeline.",
-    staffNoPlaceholder: "Staff ID (e.g., E1023)",
-    staffNamePlaceholder: "Full Name (e.g., Lee Tai Ming)",
-    modalSubmit: "Open Entry Tab & Submit",
-    modalCancel: "Cancel",
-    confirmEnd: "Are you sure you want to end this training session?",
-    alertInput: "Please complete the course title, trainer name, and email prefix!"
-  }
-};
-
+/**
+ * JO-TAP 現場簽到投影中樞 - 運行邏輯 (依賴 i18n.js 與 config.js)
+ */
 let currentLang = localStorage.getItem('JO_LANG') || 'zh';
+let countdownInterval = null;
 
 window.addEventListener('DOMContentLoaded', () => {
   switchLanguage(currentLang);
+  initDefaultCutoffTime();
 
-  const lastTrainer = localStorage.getItem('JO_LAST_TRAINER') || '';
-  const lastPrefix = localStorage.getItem('JO_LAST_PREFIX') || '';
-  document.getElementById('trainerName').value = lastTrainer;
-  document.getElementById('trainerEmailPrefix').value = lastPrefix;
+  // 讀取上次記錄的講者
+  document.getElementById('trainerName').value = localStorage.getItem('JO_LAST_TRAINER') || '';
+  document.getElementById('trainerEmailPrefix').value = localStorage.getItem('JO_LAST_PREFIX') || '';
 
+  // 檢查有無進行中場次
   const saved = localStorage.getItem('JO_CURRENT_SESSION');
   if (saved) {
     try {
       const data = JSON.parse(saved);
       const now = new Date().getTime();
-      const currentHKDay = getHKDateString();
-      if (data.hkDate === currentHKDay && (now - data.createdAt < APP_CONFIG.sessionTimeoutHours * 3600 * 1000)) {
-        renderActive(data.sessionId, data.title, data.url);
+      if (data.hkDate === getHKDateString() && now < data.cutoffTimestamp) {
+        renderActive(data);
       } else {
         localStorage.removeItem('JO_CURRENT_SESSION');
       }
@@ -79,35 +29,68 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+function initDefaultCutoffTime() {
+  const cutoffSelect = document.getElementById('cutoffTimeSelect');
+  if (!cutoffSelect) return;
+  const now = new Date();
+  const currentHour = now.getHours();
+
+  if (currentHour < 12) {
+    cutoffSelect.value = "12:30";
+  } else if (currentHour < 17) {
+    cutoffSelect.value = "17:30";
+  } else {
+    cutoffSelect.value = "19:00";
+  }
+}
+
 function switchLanguage(lang) {
   currentLang = lang;
   localStorage.setItem('JO_LANG', lang);
   const dict = I18N_DICT[lang];
+  if (!dict) return;
 
   document.querySelectorAll('.btn-lang').forEach(btn => btn.classList.remove('active'));
   const activeBtn = document.querySelector(`.btn-lang[onclick="switchLanguage('${lang}')"]`);
   if (activeBtn) activeBtn.classList.add('active');
 
-  document.getElementById('i18n-header-title').innerText = dict.headerTitle;
-  document.getElementById('i18n-badge').innerText = dict.badge;
-  document.getElementById('i18n-lbl-title').innerText = dict.lblTitle;
-  document.getElementById('trainingTitle').placeholder = dict.titlePlaceholder;
-  document.getElementById('i18n-lbl-trainer').innerText = dict.lblTrainer;
-  document.getElementById('trainerName').placeholder = dict.trainerPlaceholder;
-  document.getElementById('i18n-lbl-email').innerText = dict.lblEmail;
-  document.getElementById('trainerEmailPrefix').placeholder = dict.emailPlaceholder;
-  document.getElementById('i18n-btn-start').innerText = dict.btnStart;
-  document.getElementById('i18n-idle-text').innerHTML = dict.idleText;
-  document.getElementById('i18n-scan-hint').innerText = dict.scanHint;
-  document.getElementById('i18n-privacy-text').innerText = dict.privacyText;
-  document.getElementById('i18n-btn-fs').innerText = dict.btnFs;
-  document.getElementById('i18n-btn-planb').innerText = dict.btnPlanB;
-  document.getElementById('i18n-btn-end').innerText = dict.btnEnd;
-  document.getElementById('i18n-modal-title').innerText = dict.modalTitle;
-  document.getElementById('manualStaffNo').placeholder = dict.staffNoPlaceholder;
-  document.getElementById('manualStaffName').placeholder = dict.staffNamePlaceholder;
-  document.getElementById('i18n-modal-submit').innerText = dict.modalSubmit;
-  document.getElementById('i18n-modal-cancel').innerText = dict.modalCancel;
+  setInnerText('i18n-header-title', dict.headerTitle);
+  setInnerText('i18n-badge', dict.badge);
+  setInnerText('i18n-lbl-title', dict.lblTitle);
+  setPlaceholder('trainingTitle', dict.titlePlaceholder);
+  setInnerText('i18n-lbl-trainer', dict.lblTrainer);
+  setPlaceholder('trainerName', dict.trainerPlaceholder);
+  setInnerText('i18n-lbl-email', dict.lblEmail);
+  setPlaceholder('trainerEmailPrefix', dict.emailPlaceholder);
+  setInnerText('i18n-lbl-cutoff', dict.lblCutoff);
+  setInnerText('i18n-btn-start', dict.btnStart);
+  setInnerHtml('i18n-idle-text', dict.idleText);
+  setInnerText('i18n-scan-hint', dict.scanHint);
+  setInnerText('i18n-privacy-text', dict.privacyText);
+  setInnerText('i18n-paper-alert', dict.paperAlert);
+  setInnerText('i18n-btn-fs', dict.btnFs);
+  setInnerText('i18n-btn-planb', dict.btnPlanB);
+  setInnerText('i18n-btn-extend', dict.btnExtend);
+  setInnerText('i18n-btn-early-end', dict.btnEarlyEnd);
+  setInnerText('i18n-btn-end', dict.btnEnd);
+  setInnerText('i18n-modal-title', dict.modalTitle);
+  setPlaceholder('manualStaffNo', dict.staffNoPlaceholder);
+  setPlaceholder('manualStaffName', dict.staffNamePlaceholder);
+  setInnerText('i18n-modal-submit', dict.modalSubmit);
+  setInnerText('i18n-modal-cancel', dict.modalCancel);
+}
+
+function setInnerText(id, text) {
+  const el = document.getElementById(id);
+  if (el && text) el.innerText = text;
+}
+function setInnerHtml(id, html) {
+  const el = document.getElementById(id);
+  if (el && html) el.innerHTML = html;
+}
+function setPlaceholder(id, ph) {
+  const el = document.getElementById(id);
+  if (el && ph) el.placeholder = ph;
 }
 
 function getHKDateString() {
@@ -120,52 +103,101 @@ function getHKDateString() {
   return f.format(new Date()).replace(/-/g, '');
 }
 
-function startSession() {
+async function startSession() {
   const dict = I18N_DICT[currentLang];
   const title = document.getElementById('trainingTitle').value.trim();
   const trainer = document.getElementById('trainerName').value.trim();
   const prefix = document.getElementById('trainerEmailPrefix').value.trim();
+  const cutoffTimeVal = document.getElementById('cutoffTimeSelect') ? document.getElementById('cutoffTimeSelect').value : "17:30";
 
   if (!title || !trainer || !prefix) {
     alert(dict.alertInput);
     return;
   }
 
+  const trainerEmail = `${prefix}@jumboorient.com.hk`;
   localStorage.setItem('JO_LAST_TRAINER', trainer);
   localStorage.setItem('JO_LAST_PREFIX', prefix);
 
+  const now = new Date();
+  const [targetH, targetM] = cutoffTimeVal.split(':').map(Number);
+  const cutoffDate = new Date();
+  cutoffDate.setHours(targetH, targetM, 0, 0);
+
+  if (cutoffDate.getTime() <= now.getTime()) {
+    cutoffDate.setDate(cutoffDate.getDate() + 1);
+  }
+  const cutoffTimestamp = cutoffDate.getTime();
+
   const hkDate = getHKDateString();
   const sessionId = `TRN-${hkDate}-${crypto.randomUUID().split('-')[0].toUpperCase()}`;
+  const finalUrl = buildFormsUrl(sessionId, title, trainerEmail, "Self");
 
-  const urlObj = new URL(APP_CONFIG.formsBaseUrl);
-  urlObj.searchParams.set(APP_CONFIG.sessionFieldKey, sessionId);
-  const finalUrl = urlObj.toString();
+  const sessionData = {
+    sessionId,
+    title,
+    trainer,
+    trainerEmail,
+    url: finalUrl,
+    hkDate,
+    createdAt: now.getTime(),
+    cutoffTimestamp,
+    cutoffTimeString: cutoffTimeVal
+  };
 
-  localStorage.setItem('JO_CURRENT_SESSION', JSON.stringify({
-    sessionId, title, trainer, url: finalUrl, hkDate, createdAt: new Date().getTime()
-  }));
+  localStorage.setItem('JO_CURRENT_SESSION', JSON.stringify(sessionData));
+  registerSessionBackend(sessionData);
 
-  renderActive(sessionId, title, finalUrl);
+  renderActive(sessionData);
   executeFullscreen();
 }
 
-function renderActive(sessionId, title, url) {
+function buildFormsUrl(sessionId, title, trainerEmail, signType) {
+  const urlObj = new URL(APP_CONFIG.formsBaseUrl);
+  urlObj.searchParams.set(APP_CONFIG.sessionFieldKey, sessionId);
+  if (APP_CONFIG.fields && APP_CONFIG.fields.trainerEmail) {
+    urlObj.searchParams.set(APP_CONFIG.fields.trainerEmail, trainerEmail);
+  }
+  if (APP_CONFIG.fields && APP_CONFIG.fields.signSource) {
+    urlObj.searchParams.set(APP_CONFIG.fields.signSource, signType);
+  }
+  return urlObj.toString();
+}
+
+function registerSessionBackend(data) {
+  if (!APP_CONFIG.webhookRegisterUrl) return;
+  fetch(APP_CONFIG.webhookRegisterUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: "REGISTER_SCHEDULE",
+      sessionId: data.sessionId,
+      trainingTitle: data.title,
+      trainerName: data.trainer,
+      trainerEmail: data.trainerEmail,
+      cutoffIso: new Date(data.cutoffTimestamp).toISOString()
+    })
+  }).catch(() => {
+    console.warn("後端排程註冊離線，系統維持本地計時。");
+  });
+}
+
+function renderActive(data) {
   document.getElementById('setupPanel').style.display = 'none';
   document.getElementById('idleView').style.display = 'none';
-  document.getElementById('activeView').style.display = 'flex';
-  document.getElementById('activeView').style.flexDirection = 'column';
-  document.getElementById('activeView').style.alignItems = 'center';
+  const activeView = document.getElementById('activeView');
+  activeView.style.display = 'flex';
+  activeView.style.flexDirection = 'column';
+  activeView.style.alignItems = 'center';
 
-  document.getElementById('lblSession').innerText = sessionId;
-  document.getElementById('lblTitle').innerText = title;
+  document.getElementById('lblSession').innerText = data.sessionId;
+  document.getElementById('lblTitle').innerText = data.title;
 
   const qrBox = document.getElementById('qrcode-box');
   qrBox.innerHTML = '';
-
-  // 尺寸鎖定 280px，改用 M 級容錯，大幅降低點陣密度
   try {
     new QRCode(qrBox, {
-      text: url,
+      text: data.url,
       width: 280,
       height: 280,
       colorDark: "#000000",
@@ -173,13 +205,88 @@ function renderActive(sessionId, title, url) {
       correctLevel: QRCode.CorrectLevel.M
     });
   } catch (err) {
-    qrBox.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(url)}" style="width:280px;height:280px;" alt="QR Code">`;
+    qrBox.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(data.url)}" style="width:280px;height:280px;" alt="QR Code">`;
   }
+
+  startCountdown(data.cutoffTimestamp);
+}
+
+function startCountdown(cutoffTimestamp) {
+  if (countdownInterval) clearInterval(countdownInterval);
+  const timerLabel = document.getElementById('lblTimer');
+
+  function update() {
+    const now = new Date().getTime();
+    const diff = cutoffTimestamp - now;
+    if (diff <= 0) {
+      if (timerLabel) timerLabel.innerText = "已達截單時間 (排程處理中)";
+      clearInterval(countdownInterval);
+      return;
+    }
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    if (timerLabel) {
+      timerLabel.innerText = `${h}h ${m}m ${s}s`;
+    }
+  }
+  update();
+  countdownInterval = setInterval(update, 1000);
+}
+
+function extendSession30Min() {
+  const saved = JSON.parse(localStorage.getItem('JO_CURRENT_SESSION') || '{}');
+  if (!saved.cutoffTimestamp) return;
+
+  saved.cutoffTimestamp += 30 * 60 * 1000;
+  localStorage.setItem('JO_CURRENT_SESSION', JSON.stringify(saved));
+
+  startCountdown(saved.cutoffTimestamp);
+  const newDate = new Date(saved.cutoffTimestamp);
+  const timeStr = `${String(newDate.getHours()).padStart(2, '0')}:${String(newDate.getMinutes()).padStart(2, '0')}`;
+
+  alert(`${I18N_DICT[currentLang].extendSuccess} ${timeStr}`);
+
+  if (APP_CONFIG.webhookRegisterUrl) {
+    fetch(APP_CONFIG.webhookRegisterUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: "EXTEND_SESSION",
+        sessionId: saved.sessionId,
+        cutoffIso: newDate.toISOString()
+      })
+    }).catch(() => {});
+  }
+}
+
+function triggerEarlyEnd() {
+  const dict = I18N_DICT[currentLang];
+  if (!confirm(dict.confirmEarlyEnd)) return;
+
+  const saved = JSON.parse(localStorage.getItem('JO_CURRENT_SESSION') || '{}');
+
+  if (APP_CONFIG.webhookRegisterUrl) {
+    fetch(APP_CONFIG.webhookRegisterUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: "EXECUTE_NOW",
+        sessionId: saved.sessionId,
+        trainingTitle: saved.title,
+        trainerEmail: saved.trainerEmail
+      })
+    }).catch(() => {});
+  }
+
+  localStorage.removeItem('JO_CURRENT_SESSION');
+  alert(currentLang === 'zh' ? "已發送結課訊號，報告將於數分鐘內寄達！" : "Session ended. Report is being sent!");
+  location.reload();
 }
 
 function executeFullscreen() {
   const elem = document.getElementById('displayBox');
-  if (elem.requestFullscreen) {
+  if (elem && elem.requestFullscreen) {
     elem.requestFullscreen().catch(() => {});
   }
 }
@@ -187,6 +294,7 @@ function executeFullscreen() {
 function endSession() {
   const dict = I18N_DICT[currentLang];
   if (confirm(dict.confirmEnd)) {
+    if (countdownInterval) clearInterval(countdownInterval);
     localStorage.removeItem('JO_CURRENT_SESSION');
     location.reload();
   }
@@ -195,8 +303,7 @@ function endSession() {
 function openFallbackModal() {
   const dict = I18N_DICT[currentLang];
   const saved = JSON.parse(localStorage.getItem('JO_CURRENT_SESSION') || '{}');
-  const sessionText = saved.sessionId || 'N/A';
-  document.getElementById('i18n-modal-desc').innerHTML = dict.modalDesc.replace('{SESSION}', sessionText);
+  document.getElementById('i18n-modal-desc').innerHTML = dict.modalDesc.replace('{SESSION}', saved.sessionId || 'N/A');
   document.getElementById('fallbackModal').style.display = 'flex';
 }
 
@@ -210,14 +317,19 @@ function submitRealPlanB() {
   const saved = JSON.parse(localStorage.getItem('JO_CURRENT_SESSION') || '{}');
 
   if (!staffNo || !staffName) {
-    alert(currentLang === 'zh' ? "請輸入工號與中文姓名！" : "Please enter Staff ID and Full Name!");
+    alert(currentLang === 'zh' ? "請輸入職員編號與中文姓名！" : "Please enter Staff ID and Full Name!");
     return;
   }
 
-  const fallbackUrl = new URL(APP_CONFIG.fallbackFormsUrl);
-  fallbackUrl.searchParams.set(APP_CONFIG.fallbackFields.sessionId, saved.sessionId);
-  fallbackUrl.searchParams.set(APP_CONFIG.fallbackFields.staffNo, staffNo);
-  fallbackUrl.searchParams.set(APP_CONFIG.fallbackFields.staffName, staffName);
+  const fallbackUrl = new URL(APP_CONFIG.fallbackFormsUrl || APP_CONFIG.formsBaseUrl);
+  fallbackUrl.searchParams.set(APP_CONFIG.sessionFieldKey, saved.sessionId);
+  if (APP_CONFIG.fallbackFields) {
+    fallbackUrl.searchParams.set(APP_CONFIG.fallbackFields.staffNo, staffNo);
+    fallbackUrl.searchParams.set(APP_CONFIG.fallbackFields.staffName, staffName);
+  }
+  if (APP_CONFIG.fields && APP_CONFIG.fields.signSource) {
+    fallbackUrl.searchParams.set(APP_CONFIG.fields.signSource, "Manual");
+  }
 
   window.open(fallbackUrl.toString(), '_blank');
   document.getElementById('manualStaffNo').value = '';

@@ -43,6 +43,18 @@
         </div>
       </div>
 
+      <!-- 新增：培訓地點（預設常設地點） -->
+      <div class="form-group">
+        <label for="trainingLocation" id="i18n-lbl-location">培訓地點</label>
+        <input type="text" id="trainingLocation" value="總辦事處培訓室" placeholder="例如：總辦事處培訓室 / 各地盤會議室" required>
+      </div>
+
+      <!-- 新增：培訓時段說明（預設 09:30 - 17:30） -->
+      <div class="form-group">
+        <label for="trainingTimeRange" id="i18n-lbl-timerange">培訓時段</label>
+        <input type="text" id="trainingTimeRange" value="09:30 - 17:30" placeholder="例如：09:30 - 17:30 / 全日" required>
+      </div>
+
       <!-- 自選截單日期 -->
       <div class="form-group">
         <label for="cutoffDateInput" id="i18n-lbl-cutoff-date">預計完課截單日期</label>
@@ -92,7 +104,8 @@
 
       <div id="activeView" style="display: none; width: 100%;">
         <div class="session-tag" id="lblSession">TRN-XXXX</div>
-        <h2 id="lblTitle" style="font-size: 22px; margin-bottom: 8px;">培訓主題</h2>
+        <h2 id="lblTitle" style="font-size: 22px; margin-bottom: 4px;">培訓主題</h2>
+        <div id="lblSubMeta" style="font-size: 13px; color: #4b5563; margin-bottom: 8px;"></div>
         
         <!-- QR Code 容器 -->
         <div id="qrcode-box"></div>
@@ -145,7 +158,6 @@
   </div>
 </div>
 
-<!-- 依序載入獨立語言包與業務程式 -->
 <script src="i18n.js"></script>
 <script src="app.js"></script>
 </body>

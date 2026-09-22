@@ -41,6 +41,15 @@ function initDefaultDate() {
   }
 }
 
+// 輔助函式：將 24 小時制轉為易讀的 AM/PM 格式 (例如 "09:30" -> "09:30 AM")
+function formatTime12h(timeStr) {
+  if (!timeStr) return "";
+  const [h, m] = timeStr.split(':').map(Number);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const hour12 = h % 12 || 12;
+  return `${String(hour12).padStart(2, '0')}:${String(m).padStart(2, '0')} ${period}`;
+}
+
 function switchLanguage(lang) {
   currentLang = lang;
   localStorage.setItem('JO_LANG', lang);
@@ -106,9 +115,11 @@ async function startSession() {
   const trainer = document.getElementById('trainerName').value.trim();
   const prefix = document.getElementById('trainerEmailPrefix').value.trim();
   const location = document.getElementById('trainingLocation').value.trim() || "未指定地點";
-  const startT = document.getElementById('timeRangeStart')?.value || "09:30";
-  const endT = document.getElementById('timeRangeEnd')?.value || "17:30";
-  const timeRange = `${startT} - ${endT}`;
+  
+  // 讀取原生 time 元件的值並格式化成 AM/PM
+  const startRaw = document.getElementById('timeRangeStart')?.value || "09:30";
+  const endRaw = document.getElementById('timeRangeEnd')?.value || "17:30";
+  const timeRange = `${formatTime12h(startRaw)} - ${formatTime12h(endRaw)}`;
   const trainingDate = document.getElementById('trainingDateInput')?.value;
 
   if (!title || !trainer || !prefix || !trainingDate) {
@@ -122,7 +133,7 @@ async function startSession() {
   const hkDate = getHKDateString();
   const sessionId = `TRN-${hkDate}-${getSafeUUID()}`;
   
-  // 生成帶有場次編號、課程名、講師名的 Forms Prefill URL
+  // 生成包含場次、課程名、講師名的 Forms Prefill URL
   const finalUrl = buildFormsUrl(sessionId, title, trainer, trainerEmail, "Self");
 
   const sessionData = {
@@ -233,7 +244,7 @@ function renderActive(data) {
   startElapsedTimer(data.createdAt);
 }
 
-// 課堂正數計時
+// 課堂正向進行時間計時
 function startElapsedTimer(startTime) {
   if (timerInterval) clearInterval(timerInterval);
   const timerLabel = document.getElementById('lblTimer');

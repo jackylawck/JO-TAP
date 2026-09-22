@@ -7,6 +7,7 @@
   --text-muted: #6b7280;
   --border-color: #e5e7eb;
   --danger-color: #dc2626;
+  --success-color: #059669;
   --focus-ring: #2563eb;
 }
 
@@ -127,12 +128,19 @@ header h1 {
 
 .form-group input,
 .form-group select {
-  padding: 10px 12px;
+  padding: 9px 12px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
   font-size: 14px;
   transition: border-color 0.2s;
   background: #fff;
+}
+
+/* 針對 HTML5 原生 time 選擇器美化 */
+.form-group input[type="time"] {
+  font-family: inherit;
+  color: #1f2937;
+  cursor: pointer;
 }
 
 .form-group input:focus,
@@ -157,10 +165,11 @@ header h1 {
 
 .email-box span {
   background: #f9fafb;
-  padding: 10px 8px;
+  padding: 9px 8px;
   font-size: 13px;
   color: var(--text-muted);
   border-left: 1px solid #d1d5db;
+  white-space: nowrap;
 }
 
 .btn-primary {
@@ -173,7 +182,7 @@ header h1 {
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .btn-primary:hover {
@@ -195,6 +204,7 @@ header h1 {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  width: 100%;
 }
 
 .session-tag {
@@ -209,13 +219,21 @@ header h1 {
   margin-bottom: 8px;
 }
 
-/* 核心 QR Code 容器：強調純白邊界抵抗投影反白 */
+/* 課堂地點與時段備註 */
+#lblSubMeta {
+  font-size: 13px;
+  color: #4b5563;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+/* 核心 QR Code 容器：抵抗投影機反光 */
 #qrcode-box {
   background: #ffffff;
   padding: 16px;
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  margin: 10px auto;
+  margin: 8px auto;
   display: inline-flex;
   justify-content: center;
   align-items: center;
@@ -233,7 +251,7 @@ header h1 {
 .action-links {
   display: flex;
   gap: 10px;
-  margin-top: 16px;
+  margin-top: 14px;
   flex-wrap: wrap;
   justify-content: center;
 }
@@ -242,8 +260,9 @@ header h1 {
   background: #ffffff;
   border: 1px solid #d1d5db;
   border-radius: 6px;
-  padding: 7px 14px;
+  padding: 8px 14px;
   font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
   color: #374151;
   transition: all 0.2s;
@@ -254,13 +273,24 @@ header h1 {
   border-color: #9ca3af;
 }
 
+/* 立即發信按鈕：微反白高亮提升辨識度 */
+#i18n-btn-early-end {
+  border-color: #93c5fd;
+  color: #1d4ed8;
+  background-color: #eff6ff;
+}
+
+#i18n-btn-early-end:hover {
+  background-color: #dbeafe;
+  border-color: #60a5fa;
+}
+
 /* =========================================================
    全螢幕投影模式 (Fullscreen Presentation Mode)
-   專門針對會議室投影、後排可見度與講者沉浸控場設計
    ========================================================= */
 :fullscreen,
 ::backdrop {
-  background-color: #0f172a !important; /* 沉穩深藍黑背景，消除投影機泛光邊界 */
+  background-color: #0f172a !important;
 }
 
 :fullscreen .card {
@@ -275,7 +305,7 @@ header h1 {
 
 :fullscreen header,
 :fullscreen .controls {
-  display: none !important; /* 全螢幕時徹底隱藏設定欄與頂部 */
+  display: none !important;
 }
 
 :fullscreen .grid {
@@ -297,36 +327,40 @@ header h1 {
   font-size: 3.5vmin !important;
   font-weight: 800;
   color: #0f172a;
-  margin-bottom: 1vmin;
+  margin-bottom: 0.5vmin;
+}
+
+:fullscreen #lblSubMeta {
+  font-size: 1.8vmin !important;
+  margin-bottom: 1.5vmin;
 }
 
 :fullscreen .session-tag {
-  font-size: 2vmin !important;
+  font-size: 1.8vmin !important;
   padding: 6px 14px;
 }
 
 /* 全螢幕下 QR Code 極大化並保持清晰 */
 :fullscreen #qrcode-box {
-  padding: 2.5vmin;
+  padding: 2.2vmin;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-  margin: 1.5vmin auto;
+  margin: 1vmin auto;
 }
 
 :fullscreen #qrcode-box canvas,
 :fullscreen #qrcode-box img {
-  width: 50vmin !important;
-  height: 50vmin !important;
+  width: 48vmin !important;
+  height: 48vmin !important;
 }
 
 :fullscreen #i18n-scan-hint {
-  font-size: 2.5vmin !important;
+  font-size: 2.3vmin !important;
   font-weight: 700;
   color: #1e293b;
 }
 
-/* 全螢幕下弱化隱私聲明，縮小讓位給投影主體 */
 :fullscreen .privacy-text {
-  font-size: 1.3vmin !important;
+  font-size: 1.2vmin !important;
   max-width: 70vw;
   color: #94a3b8;
   border: none;
@@ -334,27 +368,27 @@ header h1 {
 }
 
 :fullscreen .paper-backup-alert {
-  font-size: 1.4vmin !important;
+  font-size: 1.3vmin !important;
   margin-top: 4px;
 }
 
-/* 全螢幕時的操作列：淡化隱藏，滑鼠懸停底部時才浮現 */
+/* 全螢幕懸浮操作欄 */
 :fullscreen .action-links {
   position: fixed;
-  bottom: 15px;
+  bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(255, 255, 255, 0.95);
-  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.96);
+  padding: 8px 18px;
   border-radius: 30px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
   opacity: 0.15;
   transition: opacity 0.3s ease;
-  z-index: 50;
+  z-index: 100;
 }
 
 :fullscreen .action-links:hover {
-  opacity: 1; /* 講師滑鼠滑到螢幕底部即自動顯現控制列 */
+  opacity: 1;
 }
 
 /* =========================================================
@@ -363,17 +397,13 @@ header h1 {
 .modal {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(2px);
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(3px);
   display: none;
   justify-content: center;
   align-items: center;
-  z-index: 999;
+  z-index: 9999; /* 保證無論是否全螢幕都能覆蓋在最上層 */
   padding: 16px;
-}
-
-.modal.active {
-  display: flex;
 }
 
 .modal-content {
@@ -382,10 +412,11 @@ header h1 {
   padding: 24px;
   width: 100%;
   max-width: 440px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.25);
+  text-align: left;
 }
 
-/* 手機與平板適配 */
+/* 手機與平板響應式適配 */
 @media (max-width: 768px) {
   .grid {
     grid-template-columns: 1fr;

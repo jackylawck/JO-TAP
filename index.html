@@ -30,16 +30,6 @@
         <input type="text" id="trainingTitle" placeholder="例如：高空工作安全訓練" required>
       </div>
 
-      <div class="form-group">
-        <label for="trainerSelect" id="i18n-lbl-trainer-select">主講者快捷選擇</label>
-        <select id="trainerSelect" onchange="handleTrainerSelect(this.value)">
-          <option value="">-- 請選擇常設講者或手動輸入 --</option>
-          <option value="jackylaw|Jacky Law">Jacky Law (HRD)</option>
-          <option value="safety|Safety Officer">安全主任 (Safety)</option>
-          <option value="custom">✏️ 其他 / 手動輸入</option>
-        </select>
-      </div>
-
       <div class="form-group" id="groupTrainerName">
         <label for="trainerName" id="i18n-lbl-trainer">主講者姓名</label>
         <input type="text" id="trainerName" placeholder="例如：陳大文" required>
@@ -51,6 +41,17 @@
           <input type="text" id="trainerEmailPrefix" placeholder="trainer.name" required>
           <span>@jumboorient.com.hk</span>
         </div>
+      </div>
+
+      <div class="form-group">
+        <label for="cutoffTimeSelect" id="i18n-lbl-cutoff">預計完課截單時間 (系統自動排程發信)</label>
+        <select id="cutoffTimeSelect">
+          <option value="12:30">12:30 (上午半日)</option>
+          <option value="17:00">17:00 (常規全日)</option>
+          <option value="17:30" selected>17:30 (全日培訓推薦)</option>
+          <option value="18:00">18:00 (傍晚完課)</option>
+          <option value="19:00">19:00 (夜間訓練)</option>
+        </select>
       </div>
 
       <button class="btn-primary" id="i18n-btn-start" onclick="startSession()">🚀 一鍵生成並全螢幕投影</button>
@@ -70,19 +71,25 @@
         <div id="qrcode-box"></div>
         
         <p style="font-size: 15px; font-weight: 600; margin: 10px 0 4px 0;" id="i18n-scan-hint">請使用手機相機掃描 QR Code 登記出席</p>
-        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;" id="i18n-scan-subhint">如遇網絡微弱，請連接現場公司 Wi-Fi 重新載入</p>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 6px;" id="i18n-scan-subhint">如遇網絡微弱，請連接現場公司 Wi-Fi 重新載入</p>
         
+        <div style="font-size: 13px; font-weight: 600; color: #003366; margin-bottom: 10px;">
+          <span id="i18n-cutoff-notice">預計自動截單發信時間：</span><span id="lblTimer">--</span>
+        </div>
+
         <p class="privacy-text" id="i18n-privacy-text" style="font-size: 11px; color: #6b7280; line-height: 1.4; border-top: 1px dashed #e5e7eb; padding-top: 8px;">
           【個資收集聲明】本簽到資料（工號、姓名、部門）僅用於本場出勤核對、培訓時數統計及符合合規要求之 HRF-043 紀錄存檔。資料保存期依公司內部人事政策執行，如需查閱或更正請聯絡人力資源組。
         </p>
 
-        <p class="paper-backup-alert" style="font-size: 11px; color: #b91c1c; font-weight: 500; margin: 4px 0 10px 0;">
+        <p class="paper-backup-alert" id="i18n-paper-alert" style="font-size: 11px; color: #b91c1c; font-weight: 500; margin: 4px 0 10px 0;">
           ⚠️ 若現場網絡持續中斷，請即時啟用 HRF-043 紙本簽到表備用。
         </p>
 
         <div class="action-links">
           <button type="button" onclick="executeFullscreen()" id="i18n-btn-fs">全螢幕投影</button>
           <button type="button" onclick="openFallbackModal()" id="i18n-btn-planb">現場手動補簽 (Plan B)</button>
+          <button type="button" onclick="extendSession30Min()" id="i18n-btn-extend">⏱️ 課堂延鐘 (+30分)</button>
+          <button type="button" onclick="triggerEarlyEnd()" id="i18n-btn-early-end">✉️ 提前完課並立即發信</button>
           <button type="button" onclick="endSession()" style="color: #dc2626;" id="i18n-btn-end">結束本場培訓</button>
         </div>
       </div>
@@ -96,14 +103,14 @@
     <h3 style="margin-bottom: 8px; font-size: 16px;" id="i18n-modal-title">現場手動補簽 (Plan B)</h3>
     <p style="font-size: 12px; color: #4b5563; margin-bottom: 12px;" id="i18n-modal-desc">
       當前場次：<strong id="modalSessionId" style="color: #003366;"></strong><br>
-      若員工手機無法掃碼，請使用此終端開啟預先載入場次代碼的 Microsoft Forms 官方頁面代填。
+      若員工手機無法掃碼，請開啟已預填場次代碼的 Microsoft Forms 官方頁面代填。
     </p>
     
-    <div style="background-color: #f3f4f6; border-radius: 6px; padding: 10px; margin-bottom: 14px; text-align: left; font-size: 12px; color: #374151;">
-      <strong>代簽指引：</strong><br>
-      1. 點擊下方按鈕將於新分頁開啟已鎖定場次編號的正式簽到表單。<br>
-      2. 填入員工「職員編號」與「中文姓名」並送出。<br>
-      3. 資料直接寫入 SharePoint 後台。
+    <div class="form-group" style="margin-bottom: 8px;">
+      <input type="text" id="manualStaffNo" placeholder="職員編號 (Staff ID)">
+    </div>
+    <div class="form-group" style="margin-bottom: 12px;">
+      <input type="text" id="manualStaffName" placeholder="中文姓名 (Full Name)">
     </div>
 
     <button class="btn-primary" id="i18n-modal-submit" onclick="submitRealPlanB()">開啟已帶入場次之補簽表單 ↗</button>
@@ -111,6 +118,8 @@
   </div>
 </div>
 
+<!-- 依序載入獨立語言包與業務程式 -->
+<script src="i18n.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

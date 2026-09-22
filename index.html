@@ -49,7 +49,13 @@
         <input type="text" id="trainingLocation" placeholder="例如：總辦事處培訓室 / 各地盤會議室">
       </div>
 
-      <!-- 培訓時段：改為 HTML5 原生時間選擇器，自帶 AM/PM 與任意分鐘調節 -->
+      <!-- 培訓日期（調整至時段上方，預設為今天） -->
+      <div class="form-group">
+        <label for="trainingDateInput" id="i18n-lbl-date">培訓日期</label>
+        <input type="date" id="trainingDateInput" required>
+      </div>
+
+      <!-- 培訓時段：HTML5 原生時間選擇器，自帶 AM/PM 與任意分鐘調節 -->
       <div class="form-group">
         <label id="i18n-lbl-timerange">培訓時段</label>
         <div style="display: flex; align-items: center; gap: 8px;">
@@ -57,12 +63,6 @@
           <span style="font-weight: bold; color: #4b5563;">至</span>
           <input type="time" id="timeRangeEnd" value="17:30" style="flex: 1;" required>
         </div>
-      </div>
-
-      <!-- 培訓日期（預設為今天） -->
-      <div class="form-group">
-        <label for="trainingDateInput" id="i18n-lbl-date">培訓日期</label>
-        <input type="date" id="trainingDateInput" required>
       </div>
 
       <button class="btn-primary" id="i18n-btn-start" onclick="startSession()">🚀 一鍵生成並全螢幕投影</button>

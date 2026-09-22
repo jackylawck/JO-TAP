@@ -72,6 +72,7 @@ function switchLanguage(lang) {
   setPlaceholder('trainingLocation', dict.locationPlaceholder);
   setInnerText('i18n-lbl-timerange', dict.lblTimeRange);
   setInnerText('i18n-lbl-date', dict.lblDate);
+  setInnerText('i18n-time-to', dict.timeTo || "至");
   setInnerText('i18n-btn-start', dict.btnStart);
   setInnerHtml('i18n-idle-text', dict.idleText);
   setInnerText('i18n-scan-hint', dict.scanHint);
@@ -116,7 +117,7 @@ async function startSession() {
   const prefix = document.getElementById('trainerEmailPrefix').value.trim();
   const location = document.getElementById('trainingLocation').value.trim() || "未指定地點";
   
-  // 讀取原生下拉或選取元件的值並格式化成 AM/PM
+  // 讀取時間並轉格式
   const startRaw = document.getElementById('timeRangeStart')?.value || "09:30";
   const endRaw = document.getElementById('timeRangeEnd')?.value || "17:30";
   const timeRange = `${formatTime12h(startRaw)} - ${formatTime12h(endRaw)}`;
@@ -133,7 +134,6 @@ async function startSession() {
   const hkDate = getHKDateString();
   const sessionId = `TRN-${hkDate}-${getSafeUUID()}`;
   
-  // 修正：同時帶入場次、課程名稱、講師姓名 GUID 預填，避免學員端漏資料
   const finalUrl = buildFormsUrl(sessionId, title, trainer);
 
   const sessionData = {
@@ -156,7 +156,7 @@ async function startSession() {
 }
 
 /**
- * 構建帶有真實 GUID 的 Forms 預填網址 (場次編號、課程名、講師名全自動帶入)
+ * 構建帶有真實 GUID 的 Forms 預填網址
  */
 function buildFormsUrl(sessionId, title, trainerName) {
   const baseUrl = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.formsBaseUrl) 
@@ -194,7 +194,6 @@ function renderActive(data) {
   document.getElementById('lblSession').innerText = data.sessionId;
   document.getElementById('lblTitle').innerText = data.title;
   
-  // 顯示地點與時段備註
   const subMeta = document.getElementById('lblSubMeta');
   if (subMeta) {
     subMeta.innerText = `地點：${data.location} | 時段：${data.timeRange} | 日期：${data.trainingDate}`;
@@ -242,7 +241,7 @@ function startElapsedTimer(startTime) {
 }
 
 /**
- * ✉️ 立即發信：具備完整容錯與雙軌支援 (Webhook 背景發送優先，表單轉發備援)
+ * ✉️ 立即發信：退出全螢幕、防攔截安全開啟表單，保留大螢幕狀態直至提交完畢
  */
 async function triggerImmediateSend() {
   const dict = I18N_DICT[currentLang];
@@ -254,33 +253,22 @@ async function triggerImmediateSend() {
     return;
   }
 
+  // 1. 若處於全螢幕，先主動退出，避免瀏覽器攔截新分頁開啟
+  if (document.fullscreenElement && document.exitFullscreen) {
+    try { await document.exitFullscreen(); } catch (e) {}
+  }
+
   const payload = {
-    action: "EXECUTE_NOW",
     sessionId: saved.sessionId,
     trainingTitle: saved.title,
     trainerName: saved.trainer,
     trainerEmail: saved.trainerEmail,
-    trainingLocation: saved.location,
+    trainingLocation: saved.location || "未指定地點",
     trainingDate: saved.trainingDate,
     trainingTime: saved.timeRange
   };
 
-  // 途徑 A：若 config.js 有設定 webhookRegisterUrl，直接於背景非同步 POST 發信
-  if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.webhookRegisterUrl) {
-    try {
-      await fetch(APP_CONFIG.webhookRegisterUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      finalizeSendSuccess();
-      return;
-    } catch (err) {
-      console.warn("Webhook 背景發送失敗，嘗試備援通道...", err);
-    }
-  }
-
-  // 途徑 B：若設定為 triggerFormsUrl (表單觸發)，安全開啟已填好之確認表單
+  // 途徑 A：若 config.js 有配置 triggerFormsUrl (Forms 觸發核心)
   if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.triggerFormsUrl && APP_CONFIG.triggerFields) {
     try {
       const urlObj = new URL(APP_CONFIG.triggerFormsUrl);
@@ -293,29 +281,46 @@ async function triggerImmediateSend() {
       if (f.trainingDate) urlObj.searchParams.set(f.trainingDate, payload.trainingDate);
       if (f.trainingTime) urlObj.searchParams.set(f.trainingTime, payload.trainingTime);
 
-      window.open(urlObj.toString(), '_blank');
-      finalizeSendSuccess(true);
+      const targetUrl = urlObj.toString();
+
+      // 安全開啟新視窗（不立即 reload 頁面，避免新視窗被瀏覽器殺死）
+      const newWin = window.open(targetUrl, '_blank');
+      if (!newWin || newWin.closed || typeof newWin.closed === 'undefined') {
+        // 若被彈窗攔截，則直接當頁跳轉
+        window.location.href = targetUrl;
+      } else {
+        alert(currentLang === 'zh' 
+          ? "已開啟【完課發信確認】分頁，所有課堂資料已自動填妥！\n請直接在新分頁點擊「提交」發送簽到總表。" 
+          : "Report trigger form opened with all data filled. Please click 'Submit' on that page!");
+      }
       return;
     } catch (e) {
       console.error("觸發表單網址解析錯誤：", e);
+      alert("開啟發信表單失敗：" + e.message);
+      return;
     }
   }
 
-  // 兩者皆未配置時的警告提示
-  alert(currentLang === 'zh' 
-    ? "請先於 config.js 設定 webhookRegisterUrl 或 triggerFormsUrl 方可啟動發信！" 
-    : "Please configure webhookRegisterUrl or triggerFormsUrl in config.js first!");
-}
-
-function finalizeSendSuccess(isFormMode = false) {
-  if (timerInterval) clearInterval(timerInterval);
-  localStorage.removeItem('JO_CURRENT_SESSION');
-  if (isFormMode) {
-    alert(currentLang === 'zh' ? "已開啟發信確認分頁，請點擊「提交」發送簽到總表！" : "Submission page opened. Please click 'Submit' to send report!");
-  } else {
-    alert(currentLang === 'zh' ? "已發送結課訊號，報告將於數分鐘內寄達！" : "Session report is being generated and sent!");
+  // 途徑 B：Webhook 備援 (若有)
+  if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.webhookRegisterUrl) {
+    try {
+      await fetch(APP_CONFIG.webhookRegisterUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: "EXECUTE_NOW", ...payload })
+      });
+      alert(currentLang === 'zh' ? "已發送結課訊號，報告將於數分鐘內寄達！" : "Session report is being generated and sent!");
+      localStorage.removeItem('JO_CURRENT_SESSION');
+      location.reload();
+      return;
+    } catch (err) {
+      console.warn("Webhook 發送失敗：", err);
+    }
   }
-  location.reload();
+
+  alert(currentLang === 'zh' 
+    ? "請先於 config.js 設定 triggerFormsUrl 方可啟動發信！" 
+    : "Please configure triggerFormsUrl in config.js first!");
 }
 
 function executeFullscreen() {
@@ -327,7 +332,7 @@ function executeFullscreen() {
 
 function endSession() {
   const dict = I18N_DICT[currentLang];
-  if (confirm(dict.confirmEnd)) {
+  if (confirm(dict.confirmEnd || "確定結束本場培訓並重設畫面？")) {
     if (timerInterval) clearInterval(timerInterval);
     localStorage.removeItem('JO_CURRENT_SESSION');
     location.reload();
@@ -346,15 +351,7 @@ function closeFallbackModal() {
 }
 
 function submitRealPlanB() {
-  const staffNo = document.getElementById('manualStaffNo').value.trim();
-  const staffName = document.getElementById('manualStaffName').value.trim();
   const saved = JSON.parse(localStorage.getItem('JO_CURRENT_SESSION') || '{}');
-
-  if (!staffNo || !staffName) {
-    alert(currentLang === 'zh' ? "請輸入職員編號與中文姓名！" : "Please enter Staff ID and Full Name!");
-    return;
-  }
-
   const base = (typeof APP_CONFIG !== 'undefined' && (APP_CONFIG.fallbackFormsUrl || APP_CONFIG.formsBaseUrl)) 
     ? (APP_CONFIG.fallbackFormsUrl || APP_CONFIG.formsBaseUrl) 
     : "https://forms.cloud.microsoft/Pages/ResponsePage.aspx";
@@ -376,7 +373,5 @@ function submitRealPlanB() {
   }
 
   window.open(fallbackUrl.toString(), '_blank');
-  document.getElementById('manualStaffNo').value = '';
-  document.getElementById('manualStaffName').value = '';
   closeFallbackModal();
 }

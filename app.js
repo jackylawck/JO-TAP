@@ -2,11 +2,11 @@
  * JO-TAP 現場簽到投影中樞 - 運行邏輯 (依賴 i18n.js 與 config.js)
  */
 let currentLang = localStorage.getItem('JO_LANG') || 'zh';
-let countdownInterval = null;
+let timerInterval = null;
 
 window.addEventListener('DOMContentLoaded', () => {
   switchLanguage(currentLang);
-  initDefaultCutoffDateTime();
+  initDefaultDate();
 
   // 徹底移除自動回填個人資料：清空舊殘留快取並重設輸入框為空白
   localStorage.removeItem('JO_LAST_TRAINER');
@@ -16,28 +16,21 @@ window.addEventListener('DOMContentLoaded', () => {
   if (trainerInput) trainerInput.value = '';
   if (prefixInput) prefixInput.value = '';
 
-  // 檢查有無進行中場次（未過期即恢復）
+  // 檢查有無進行中場次（若有則直接還原畫面）
   const saved = localStorage.getItem('JO_CURRENT_SESSION');
   if (saved) {
     try {
       const data = JSON.parse(saved);
-      const now = new Date().getTime();
-      if (now < data.cutoffTimestamp) {
-        renderActive(data);
-      } else {
-        localStorage.removeItem('JO_CURRENT_SESSION');
-      }
+      renderActive(data);
     } catch (e) {
       localStorage.removeItem('JO_CURRENT_SESSION');
     }
   }
 });
 
-// 初始化預設截單日期（今天）與時間
-function initDefaultCutoffDateTime() {
-  const dateInput = document.getElementById('cutoffDateInput');
-  const timeSelect = document.getElementById('cutoffTimeSelect');
-  
+// 初始化預設培訓日期（今天）
+function initDefaultDate() {
+  const dateInput = document.getElementById('trainingDateInput');
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -45,18 +38,6 @@ function initDefaultCutoffDateTime() {
   
   if (dateInput) {
     dateInput.value = `${year}-${month}-${day}`;
-    dateInput.min = `${year}-${month}-${day}`; // 限制不可選過去日期
-  }
-
-  if (timeSelect) {
-    const currentHour = now.getHours();
-    if (currentHour < 12) {
-      timeSelect.value = "12:30";
-    } else if (currentHour < 17) {
-      timeSelect.value = "17:30";
-    } else {
-      timeSelect.value = "21:00";
-    }
   }
 }
 
@@ -78,21 +59,19 @@ function switchLanguage(lang) {
   setPlaceholder('trainerName', dict.trainerPlaceholder);
   setInnerText('i18n-lbl-email', dict.lblEmail);
   setPlaceholder('trainerEmailPrefix', dict.emailPlaceholder);
-  setInnerText('i18n-lbl-location', dict.lblLocation || "培訓地點");
-  setPlaceholder('trainingLocation', dict.locationPlaceholder || "例如：總辦事處培訓室");
-  setInnerText('i18n-lbl-timerange', dict.lblTimeRange || "培訓時段");
-  setPlaceholder('trainingTimeRange', dict.timeRangePlaceholder || "例如：09:30 - 17:30");
-  setInnerText('i18n-lbl-cutoff-date', dict.lblCutoffDate);
-  setInnerText('i18n-lbl-cutoff', dict.lblCutoff);
+  setInnerText('i18n-lbl-location', dict.lblLocation);
+  setPlaceholder('trainingLocation', dict.locationPlaceholder);
+  setInnerText('i18n-lbl-timerange', dict.lblTimeRange);
+  setInnerText('i18n-lbl-date', dict.lblDate);
   setInnerText('i18n-btn-start', dict.btnStart);
   setInnerHtml('i18n-idle-text', dict.idleText);
   setInnerText('i18n-scan-hint', dict.scanHint);
+  setInnerText('i18n-scan-subhint', dict.scanSubHint);
   setInnerText('i18n-privacy-text', dict.privacyText);
   setInnerText('i18n-paper-alert', dict.paperAlert);
   setInnerText('i18n-cutoff-notice', dict.cutoffNotice);
   setInnerText('i18n-btn-fs', dict.btnFs);
   setInnerText('i18n-btn-planb', dict.btnPlanB);
-  setInnerText('i18n-btn-extend', dict.btnExtend);
   setInnerText('i18n-btn-early-end', dict.btnEarlyEnd);
   setInnerText('i18n-btn-end', dict.btnEnd);
   setInnerText('i18n-modal-title', dict.modalTitle);
@@ -126,34 +105,24 @@ async function startSession() {
   const title = document.getElementById('trainingTitle').value.trim();
   const trainer = document.getElementById('trainerName').value.trim();
   const prefix = document.getElementById('trainerEmailPrefix').value.trim();
-  const location = document.getElementById('trainingLocation').value.trim() || "總辦事處培訓室";
-  const timeRange = document.getElementById('trainingTimeRange').value.trim() || "09:30 - 17:30";
-  const cutoffDateVal = document.getElementById('cutoffDateInput')?.value;
-  const cutoffTimeVal = document.getElementById('cutoffTimeSelect')?.value || "17:30";
+  const location = document.getElementById('trainingLocation').value.trim() || "未指定地點";
+  const startT = document.getElementById('timeRangeStart')?.value || "09:30";
+  const endT = document.getElementById('timeRangeEnd')?.value || "17:30";
+  const timeRange = `${startT} - ${endT}`;
+  const trainingDate = document.getElementById('trainingDateInput')?.value;
 
-  if (!title || !trainer || !prefix || !cutoffDateVal) {
-    alert(dict.alertInput || "請完整填寫課程資料、講者資訊及截單時間！");
+  if (!title || !trainer || !prefix || !trainingDate) {
+    alert(dict.alertInput || "請完整填寫課程名稱、主講者姓名、電郵前綴及培訓日期！");
     return;
   }
 
   const domain = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.emailDomain) ? APP_CONFIG.emailDomain : "@jumboorient.com.hk";
   const trainerEmail = `${prefix}${domain}`;
 
-  // 結合自選日期 (YYYY-MM-DD) 與時間 (HH:mm) 計算截止絕對毫秒數
-  const [targetH, targetM] = cutoffTimeVal.split(':').map(Number);
-  const [y, m, d] = cutoffDateVal.split('-').map(Number);
-  const cutoffDate = new Date(y, m - 1, d, targetH, targetM, 0, 0);
-  const cutoffTimestamp = cutoffDate.getTime();
-
-  if (cutoffTimestamp <= new Date().getTime()) {
-    alert(currentLang === 'zh' ? "截單時間不能早於當前時間！" : "Cutoff time cannot be in the past!");
-    return;
-  }
-
   const hkDate = getHKDateString();
   const sessionId = `TRN-${hkDate}-${getSafeUUID()}`;
   
-  // 生成 URL 時同時帶入場次代碼、課程名、講師名
+  // 生成帶有場次編號、課程名、講師名的 Forms Prefill URL
   const finalUrl = buildFormsUrl(sessionId, title, trainer, trainerEmail, "Self");
 
   const sessionData = {
@@ -163,12 +132,10 @@ async function startSession() {
     trainerEmail,
     location,
     timeRange,
-    trainingDate: cutoffDateVal,
+    trainingDate,
     url: finalUrl,
     hkDate,
-    createdAt: new Date().getTime(),
-    cutoffTimestamp,
-    cutoffTimeString: `${cutoffDateVal} ${cutoffTimeVal}`
+    createdAt: new Date().getTime()
   };
 
   localStorage.setItem('JO_CURRENT_SESSION', JSON.stringify(sessionData));
@@ -217,18 +184,17 @@ function registerSessionBackend(data) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      action: "REGISTER_SCHEDULE",
+      action: "REGISTER_SESSION",
       sessionId: data.sessionId,
       trainingTitle: data.title,
       trainerName: data.trainer,
       trainerEmail: data.trainerEmail,
       trainingDate: data.trainingDate,
       trainingTime: data.timeRange,
-      trainingLocation: data.location,
-      cutoffIso: new Date(data.cutoffTimestamp).toISOString()
+      trainingLocation: data.location
     })
   }).catch(() => {
-    console.warn("後端排程註冊離線，系統維持本地計時。");
+    console.warn("後端註冊離線，系統維持本地運作。");
   });
 }
 
@@ -264,66 +230,38 @@ function renderActive(data) {
     qrBox.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(data.url)}" style="width:280px;height:280px;" alt="QR Code">`;
   }
 
-  startCountdown(data.cutoffTimestamp);
+  startElapsedTimer(data.createdAt);
 }
 
-function startCountdown(cutoffTimestamp) {
-  if (countdownInterval) clearInterval(countdownInterval);
+// 課堂正數計時
+function startElapsedTimer(startTime) {
+  if (timerInterval) clearInterval(timerInterval);
   const timerLabel = document.getElementById('lblTimer');
 
   function update() {
-    const now = new Date().getTime();
-    const diff = cutoffTimestamp - now;
-    if (diff <= 0) {
-      if (timerLabel) timerLabel.innerText = "已達截單時間 (排程處理中)";
-      clearInterval(countdownInterval);
-      return;
-    }
-    const d = Math.floor(diff / (3600000 * 24));
-    const h = Math.floor((diff % (3600000 * 24)) / 3600000);
+    const diff = Math.max(0, new Date().getTime() - startTime);
+    const h = Math.floor(diff / 3600000);
     const m = Math.floor((diff % 3600000) / 60000);
     const s = Math.floor((diff % 60000) / 1000);
 
     if (timerLabel) {
-      timerLabel.innerText = d > 0 ? `${d}d ${h}h ${m}m ${s}s` : `${h}h ${m}m ${s}s`;
+      if (h > 0) {
+        timerLabel.innerText = `${h}小時 ${m}分 ${s}秒`;
+      } else {
+        timerLabel.innerText = `${m}分 ${s}秒`;
+      }
     }
   }
   update();
-  countdownInterval = setInterval(update, 1000);
-}
-
-function extendSession30Min() {
-  const saved = JSON.parse(localStorage.getItem('JO_CURRENT_SESSION') || '{}');
-  if (!saved.cutoffTimestamp) return;
-
-  saved.cutoffTimestamp += 30 * 60 * 1000;
-  localStorage.setItem('JO_CURRENT_SESSION', JSON.stringify(saved));
-
-  startCountdown(saved.cutoffTimestamp);
-  const newDate = new Date(saved.cutoffTimestamp);
-  const timeStr = `${String(newDate.getHours()).padStart(2, '0')}:${String(newDate.getMinutes()).padStart(2, '0')}`;
-
-  alert(`${I18N_DICT[currentLang].extendSuccess} ${timeStr}`);
-
-  if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.webhookRegisterUrl) {
-    fetch(APP_CONFIG.webhookRegisterUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: "EXTEND_SESSION",
-        sessionId: saved.sessionId,
-        cutoffIso: newDate.toISOString()
-      })
-    }).catch(() => {});
-  }
+  timerInterval = setInterval(update, 1000);
 }
 
 /**
- * 提前完課按鈕：直接打包首頁設定的所有參數（包括地點、時間、日期）背景送出
+ * ✉️ 立即發信：直接打包所有課堂資料傳送至 Webhook
  */
-function triggerEarlyEnd() {
+function triggerImmediateSend() {
   const dict = I18N_DICT[currentLang];
-  if (!confirm(dict.confirmEarlyEnd)) return;
+  if (!confirm(dict.confirmImmediateSend)) return;
 
   const saved = JSON.parse(localStorage.getItem('JO_CURRENT_SESSION') || '{}');
 
@@ -345,7 +283,7 @@ function triggerEarlyEnd() {
   }
 
   localStorage.removeItem('JO_CURRENT_SESSION');
-  alert(currentLang === 'zh' ? "已發送結課訊號，報告將於數分鐘內寄達！" : "Session ended. Report is being sent!");
+  alert(currentLang === 'zh' ? "已發送結課訊號，報告將於數分鐘內寄達！" : "Session report is being generated and sent!");
   location.reload();
 }
 
@@ -359,7 +297,7 @@ function executeFullscreen() {
 function endSession() {
   const dict = I18N_DICT[currentLang];
   if (confirm(dict.confirmEnd)) {
-    if (countdownInterval) clearInterval(countdownInterval);
+    if (timerInterval) clearInterval(timerInterval);
     localStorage.removeItem('JO_CURRENT_SESSION');
     location.reload();
   }

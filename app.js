@@ -146,7 +146,9 @@ async function startSession() {
 
   const hkDate = getHKDateString();
   const sessionId = `TRN-${hkDate}-${getSafeUUID()}`;
-  const finalUrl = buildFormsUrl(sessionId, title, trainerEmail, "Self");
+  
+  // 關鍵改動：生成 URL 時同時傳入 title 與 trainer 姓名
+  const finalUrl = buildFormsUrl(sessionId, title, trainer, trainerEmail, "Self");
 
   const sessionData = {
     sessionId,
@@ -167,15 +169,36 @@ async function startSession() {
   executeFullscreen();
 }
 
-function buildFormsUrl(sessionId, title, trainerEmail, signType) {
-  const baseUrl = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.formsBaseUrl) ? APP_CONFIG.formsBaseUrl : "https://forms.office.com/Pages/ResponsePage.aspx";
+/**
+ * 構建帶有真實 GUID 的 Forms 預填網址
+ */
+function buildFormsUrl(sessionId, title, trainerName, trainerEmail, signType) {
+  const baseUrl = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.formsBaseUrl) 
+    ? APP_CONFIG.formsBaseUrl 
+    : "https://forms.cloud.microsoft/Pages/ResponsePage.aspx";
   const urlObj = new URL(baseUrl);
-  const sessionKey = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.sessionFieldKey) ? APP_CONFIG.sessionFieldKey : "r_SessionID";
   
+  // 1. 場次編號 (code)
+  const sessionKey = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.sessionFieldKey) 
+    ? APP_CONFIG.sessionFieldKey 
+    : "r47260548a38342cfb911e2d607927fcc";
   urlObj.searchParams.set(sessionKey, sessionId);
+
+  // 2. 課程名稱 (class) 與主講者姓名 (tname)
   if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.fields) {
-    if (APP_CONFIG.fields.trainerEmail) urlObj.searchParams.set(APP_CONFIG.fields.trainerEmail, trainerEmail);
-    if (APP_CONFIG.fields.signSource) urlObj.searchParams.set(APP_CONFIG.fields.signSource, signType);
+    if (APP_CONFIG.fields.trainingTitle) {
+      urlObj.searchParams.set(APP_CONFIG.fields.trainingTitle, title);
+    }
+    if (APP_CONFIG.fields.trainerName) {
+      urlObj.searchParams.set(APP_CONFIG.fields.trainerName, trainerName);
+    }
+    // 預留欄位
+    if (APP_CONFIG.fields.trainerEmail && !APP_CONFIG.fields.trainerEmail.startsWith("r_")) {
+      urlObj.searchParams.set(APP_CONFIG.fields.trainerEmail, trainerEmail);
+    }
+    if (APP_CONFIG.fields.signSource && !APP_CONFIG.fields.signSource.startsWith("r_")) {
+      urlObj.searchParams.set(APP_CONFIG.fields.signSource, signType);
+    }
   }
   return urlObj.toString();
 }
@@ -341,17 +364,23 @@ function submitRealPlanB() {
 
   const base = (typeof APP_CONFIG !== 'undefined' && (APP_CONFIG.fallbackFormsUrl || APP_CONFIG.formsBaseUrl)) 
     ? (APP_CONFIG.fallbackFormsUrl || APP_CONFIG.formsBaseUrl) 
-    : "https://forms.office.com/Pages/ResponsePage.aspx";
+    : "https://forms.cloud.microsoft/Pages/ResponsePage.aspx";
   const fallbackUrl = new URL(base);
-  const sessionKey = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.sessionFieldKey) ? APP_CONFIG.sessionFieldKey : "r_SessionID";
 
+  // 1. 場次編號
+  const sessionKey = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.sessionFieldKey) 
+    ? APP_CONFIG.sessionFieldKey 
+    : "r47260548a38342cfb911e2d607927fcc";
   fallbackUrl.searchParams.set(sessionKey, saved.sessionId);
-  if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.fallbackFields) {
-    if (APP_CONFIG.fallbackFields.staffNo) fallbackUrl.searchParams.set(APP_CONFIG.fallbackFields.staffNo, staffNo);
-    if (APP_CONFIG.fallbackFields.staffName) fallbackUrl.searchParams.set(APP_CONFIG.fallbackFields.staffName, staffName);
-  }
-  if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.fields && APP_CONFIG.fields.signSource) {
-    fallbackUrl.searchParams.set(APP_CONFIG.fields.signSource, "Manual");
+
+  // 2. 課程名稱與講師姓名
+  if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.fields) {
+    if (APP_CONFIG.fields.trainingTitle) {
+      fallbackUrl.searchParams.set(APP_CONFIG.fields.trainingTitle, saved.title);
+    }
+    if (APP_CONFIG.fields.trainerName) {
+      fallbackUrl.searchParams.set(APP_CONFIG.fields.trainerName, saved.trainer);
+    }
   }
 
   window.open(fallbackUrl.toString(), '_blank');

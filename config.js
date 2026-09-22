@@ -13,12 +13,13 @@ const APP_CONFIG = {
   // 2. Microsoft Forms 官方表單真實鏈接
   formsBaseUrl: "https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=SekoVCLlN0icGNrZmiJqgHdrsKMMnEBEh_14oAG6bhBUNzJPMVNXSE5JVFNFMEhJWVBMQjFWNjZBSC4u",
   
-  // 3. 欄位 Prefill 映射鍵（已更新為 Forms 後台真實題目 GUID）
-  sessionFieldKey: "r47260548a38342cfb911e2d607927fcc",
+  // 3. 欄位 Prefill 映射鍵（已完全對齊微軟 Forms 真實題目 GUID）
+  sessionFieldKey: "r47260548a38342cfb911e2d607927fcc", // 第 4 題：場次編號
   fields: {
-    trainingTitle: "r_TrainingTitle",
-    trainerEmail: "r_TrainerEmail",
-    signSource: "r_VerificationType", // Self（學員自簽）/ Manual（講者代簽）
+    trainingTitle: "rbfd9fb9b92d74180a4abd40a35761c86", // 第 5 題：課程名稱
+    trainerName: "r4fe37acd8da24129bde0733b02ccf9dd",   // 第 6 題：主講者姓名
+    trainerEmail: "r_TrainerEmail",                      // 保留供後續擴充
+    signSource: "r_VerificationType",                     // Self（學員自簽）/ Manual（講者代簽）
     manualBy: "r_OperatorName"
   },
 
@@ -53,6 +54,7 @@ const CONFIG = {
     FIELD_KEYS: {
       SESSION_ID: APP_CONFIG.sessionFieldKey,
       TRAINING_TITLE: APP_CONFIG.fields.trainingTitle,
+      TRAINER_NAME: APP_CONFIG.fields.trainerName,
       TRAINER_EMAIL: APP_CONFIG.fields.trainerEmail,
       SIGN_SOURCE: APP_CONFIG.fields.signSource,
       OPERATOR_NAME: APP_CONFIG.fields.manualBy
@@ -69,16 +71,19 @@ const CONFIG = {
   HELPERS: {
     /**
      * 產出學員自主掃碼的 QR Code 專用 URL
+     * 自動帶入：場次編號、培訓課程名稱、主講者姓名
      */
-    buildAttendeeQrUrl: function(sessionId, title, trainerEmail) {
+    buildAttendeeQrUrl: function(sessionId, title, trainerName, trainerEmail) {
       const p = CONFIG.FORMS.FIELD_KEYS;
       const base = CONFIG.FORMS.BASE_URL;
       const params = new URLSearchParams();
       
       params.append(p.SESSION_ID, sessionId);
       params.append(p.TRAINING_TITLE, title);
-      params.append(p.TRAINER_EMAIL, trainerEmail);
-      params.append(p.SIGN_SOURCE, "Self"); // 審計標籤：學員自簽
+      params.append(p.TRAINER_NAME, trainerName);
+      if (p.TRAINER_EMAIL && !p.TRAINER_EMAIL.startsWith("r_")) {
+        params.append(p.TRAINER_EMAIL, trainerEmail);
+      }
       
       return `${base}&${params.toString()}`;
     },
@@ -93,8 +98,7 @@ const CONFIG = {
       
       params.append(p.SESSION_ID, sessionId);
       params.append(p.TRAINING_TITLE, title);
-      params.append(p.SIGN_SOURCE, "Manual"); // 審計標籤：現場代簽
-      params.append(p.OPERATOR_NAME, trainerName || "Trainer");
+      params.append(p.TRAINER_NAME, trainerName || "Trainer");
       
       return `${base}&${params.toString()}`;
     }

@@ -156,31 +156,30 @@ async function startSession() {
 }
 
 /**
- * 構建帶有真實 GUID 的 Forms 預填網址
+ * 構建帶有真實 GUID 的 Forms 預填網址 (使用 %20 保留乾淨空格)
  */
 function buildFormsUrl(sessionId, title, trainerName) {
   const baseUrl = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.formsBaseUrl) 
     ? APP_CONFIG.formsBaseUrl 
     : "https://forms.cloud.microsoft/Pages/ResponsePage.aspx";
-  const urlObj = new URL(baseUrl);
   
-  // 1. 場次編號 GUID
   const sessionKey = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.sessionFieldKey) 
     ? APP_CONFIG.sessionFieldKey 
     : "r47260548a38342cfb911e2d607927fcc";
-  urlObj.searchParams.set(sessionKey, sessionId);
 
-  // 2. 課程名稱與講師姓名 GUID
+  const queryParams = [`${sessionKey}=${encodeURIComponent(sessionId)}`];
+
   if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.fields) {
     if (APP_CONFIG.fields.trainingTitle && title) {
-      urlObj.searchParams.set(APP_CONFIG.fields.trainingTitle, title);
+      queryParams.push(`${APP_CONFIG.fields.trainingTitle}=${encodeURIComponent(title)}`);
     }
     if (APP_CONFIG.fields.trainerName && trainerName) {
-      urlObj.searchParams.set(APP_CONFIG.fields.trainerName, trainerName);
+      queryParams.push(`${APP_CONFIG.fields.trainerName}=${encodeURIComponent(trainerName)}`);
     }
   }
 
-  return urlObj.toString();
+  const delimiter = baseUrl.includes('?') ? '&' : '?';
+  return `${baseUrl}${delimiter}${queryParams.join('&')}`;
 }
 
 function renderActive(data) {
@@ -241,7 +240,7 @@ function startElapsedTimer(startTime) {
 }
 
 /**
- * ✉️ 立即發信：退出全螢幕、防攔截安全開啟表單，保留大螢幕狀態直至提交完畢
+ * ✉️ 立即發信：退出全螢幕、防攔截安全開啟表單，並使用 %20 替代 + 號
  */
 async function triggerImmediateSend() {
   const dict = I18N_DICT[currentLang];
@@ -253,7 +252,7 @@ async function triggerImmediateSend() {
     return;
   }
 
-  // 1. 若處於全螢幕，先主動退出，避免瀏覽器攔截新分頁開啟
+  // 1. 若處於全螢幕，先退出全螢幕，避免瀏覽器攔截新分頁開啟
   if (document.fullscreenElement && document.exitFullscreen) {
     try { await document.exitFullscreen(); } catch (e) {}
   }
@@ -268,20 +267,23 @@ async function triggerImmediateSend() {
     trainingTime: saved.timeRange
   };
 
-  // 途徑 A：若 config.js 有配置 triggerFormsUrl (Forms 觸發核心)
+  // 途徑 A：Forms 觸發 (使用 encodeURIComponent 避免將空格轉為 + 號)
   if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.triggerFormsUrl && APP_CONFIG.triggerFields) {
     try {
-      const urlObj = new URL(APP_CONFIG.triggerFormsUrl);
+      const baseUrl = APP_CONFIG.triggerFormsUrl;
       const f = APP_CONFIG.triggerFields;
-      if (f.sessionId) urlObj.searchParams.set(f.sessionId, payload.sessionId);
-      if (f.trainingTitle) urlObj.searchParams.set(f.trainingTitle, payload.trainingTitle);
-      if (f.trainerName) urlObj.searchParams.set(f.trainerName, payload.trainerName);
-      if (f.trainerEmail) urlObj.searchParams.set(f.trainerEmail, payload.trainerEmail);
-      if (f.trainingLocation) urlObj.searchParams.set(f.trainingLocation, payload.trainingLocation);
-      if (f.trainingDate) urlObj.searchParams.set(f.trainingDate, payload.trainingDate);
-      if (f.trainingTime) urlObj.searchParams.set(f.trainingTime, payload.trainingTime);
+      const queryList = [];
 
-      const targetUrl = urlObj.toString();
+      if (f.sessionId) queryList.push(`${f.sessionId}=${encodeURIComponent(payload.sessionId)}`);
+      if (f.trainingTitle) queryList.push(`${f.trainingTitle}=${encodeURIComponent(payload.trainingTitle)}`);
+      if (f.trainerName) queryList.push(`${f.trainerName}=${encodeURIComponent(payload.trainerName)}`);
+      if (f.trainerEmail) queryList.push(`${f.trainerEmail}=${encodeURIComponent(payload.trainerEmail)}`);
+      if (f.trainingLocation) queryList.push(`${f.trainingLocation}=${encodeURIComponent(payload.trainingLocation)}`);
+      if (f.trainingDate) queryList.push(`${f.trainingDate}=${encodeURIComponent(payload.trainingDate)}`);
+      if (f.trainingTime) queryList.push(`${f.trainingTime}=${encodeURIComponent(payload.trainingTime)}`);
+
+      const delimiter = baseUrl.includes('?') ? '&' : '?';
+      const targetUrl = `${baseUrl}${delimiter}${queryList.join('&')}`;
 
       // 安全開啟新視窗（不立即 reload 頁面，避免新視窗被瀏覽器殺死）
       const newWin = window.open(targetUrl, '_blank');
@@ -355,23 +357,25 @@ function submitRealPlanB() {
   const base = (typeof APP_CONFIG !== 'undefined' && (APP_CONFIG.fallbackFormsUrl || APP_CONFIG.formsBaseUrl)) 
     ? (APP_CONFIG.fallbackFormsUrl || APP_CONFIG.formsBaseUrl) 
     : "https://forms.cloud.microsoft/Pages/ResponsePage.aspx";
-  const fallbackUrl = new URL(base);
-
+  
   const sessionKey = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.sessionFieldKey) 
     ? APP_CONFIG.sessionFieldKey 
     : "r47260548a38342cfb911e2d607927fcc";
-  fallbackUrl.searchParams.set(sessionKey, saved.sessionId);
 
-  // 補簽表單同時將課程名與講師姓名帶入
+  const queryList = [`${sessionKey}=${encodeURIComponent(saved.sessionId)}`];
+
   if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.fields) {
     if (APP_CONFIG.fields.trainingTitle && saved.title) {
-      fallbackUrl.searchParams.set(APP_CONFIG.fields.trainingTitle, saved.title);
+      queryList.push(`${APP_CONFIG.fields.trainingTitle}=${encodeURIComponent(saved.title)}`);
     }
     if (APP_CONFIG.fields.trainerName && saved.trainer) {
-      fallbackUrl.searchParams.set(APP_CONFIG.fields.trainerName, saved.trainer);
+      queryList.push(`${APP_CONFIG.fields.trainerName}=${encodeURIComponent(saved.trainer)}`);
     }
   }
 
-  window.open(fallbackUrl.toString(), '_blank');
+  const delimiter = base.includes('?') ? '&' : '?';
+  const fallbackUrl = `${base}${delimiter}${queryList.join('&')}`;
+
+  window.open(fallbackUrl, '_blank');
   closeFallbackModal();
 }

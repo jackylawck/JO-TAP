@@ -116,7 +116,7 @@ async function startSession() {
   const prefix = document.getElementById('trainerEmailPrefix').value.trim();
   const location = document.getElementById('trainingLocation').value.trim() || "未指定地點";
   
-  // 讀取原生 time 元件的值並格式化成 AM/PM
+  // 讀取原生下拉或選取元件的值並格式化成 AM/PM
   const startRaw = document.getElementById('timeRangeStart')?.value || "09:30";
   const endRaw = document.getElementById('timeRangeEnd')?.value || "17:30";
   const timeRange = `${formatTime12h(startRaw)} - ${formatTime12h(endRaw)}`;
@@ -133,8 +133,8 @@ async function startSession() {
   const hkDate = getHKDateString();
   const sessionId = `TRN-${hkDate}-${getSafeUUID()}`;
   
-  // 生成學員 Forms Prefill URL (只帶入 SessionID)
-  const finalUrl = buildFormsUrl(sessionId);
+  // 修正：同時帶入場次、課程名稱、講師姓名 GUID 預填，避免學員端漏資料
+  const finalUrl = buildFormsUrl(sessionId, title, trainer);
 
   const sessionData = {
     sessionId,
@@ -156,18 +156,29 @@ async function startSession() {
 }
 
 /**
- * 構建帶有真實 GUID 的 Forms 預填網址 (學員端僅需 SessionID)
+ * 構建帶有真實 GUID 的 Forms 預填網址 (場次編號、課程名、講師名全自動帶入)
  */
-function buildFormsUrl(sessionId) {
+function buildFormsUrl(sessionId, title, trainerName) {
   const baseUrl = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.formsBaseUrl) 
     ? APP_CONFIG.formsBaseUrl 
     : "https://forms.cloud.microsoft/Pages/ResponsePage.aspx";
   const urlObj = new URL(baseUrl);
   
+  // 1. 場次編號 GUID
   const sessionKey = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.sessionFieldKey) 
     ? APP_CONFIG.sessionFieldKey 
     : "r47260548a38342cfb911e2d607927fcc";
   urlObj.searchParams.set(sessionKey, sessionId);
+
+  // 2. 課程名稱與講師姓名 GUID
+  if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.fields) {
+    if (APP_CONFIG.fields.trainingTitle && title) {
+      urlObj.searchParams.set(APP_CONFIG.fields.trainingTitle, title);
+    }
+    if (APP_CONFIG.fields.trainerName && trainerName) {
+      urlObj.searchParams.set(APP_CONFIG.fields.trainerName, trainerName);
+    }
+  }
 
   return urlObj.toString();
 }
@@ -231,11 +242,11 @@ function startElapsedTimer(startTime) {
 }
 
 /**
- * ✉️ 立即發信：自動組裝所有參數，透過免費觸發表單啟動發信流程
+ * ✉️ 立即發信：具備完整容錯與雙軌支援 (Webhook 背景發送優先，表單轉發備援)
  */
-function triggerImmediateSend() {
+async function triggerImmediateSend() {
   const dict = I18N_DICT[currentLang];
-  if (!confirm(dict.confirmImmediateSend)) return;
+  if (!confirm(dict.confirmImmediateSend || "確定要【立即發信】？")) return;
 
   const saved = JSON.parse(localStorage.getItem('JO_CURRENT_SESSION') || '{}');
   if (!saved.sessionId) {
@@ -243,26 +254,67 @@ function triggerImmediateSend() {
     return;
   }
 
-  // 構建帶有完整 7 項資料的 Trigger Forms 預填網址
-  const triggerBase = APP_CONFIG.triggerFormsUrl;
-  const urlObj = new URL(triggerBase);
-  const f = APP_CONFIG.triggerFields;
+  const payload = {
+    action: "EXECUTE_NOW",
+    sessionId: saved.sessionId,
+    trainingTitle: saved.title,
+    trainerName: saved.trainer,
+    trainerEmail: saved.trainerEmail,
+    trainingLocation: saved.location,
+    trainingDate: saved.trainingDate,
+    trainingTime: saved.timeRange
+  };
 
-  urlObj.searchParams.set(f.sessionId, saved.sessionId);
-  urlObj.searchParams.set(f.trainingTitle, saved.title);
-  urlObj.searchParams.set(f.trainerName, saved.trainer);
-  urlObj.searchParams.set(f.trainerEmail, saved.trainerEmail);
-  urlObj.searchParams.set(f.trainingLocation, saved.location);
-  urlObj.searchParams.set(f.trainingDate, saved.trainingDate);
-  urlObj.searchParams.set(f.trainingTime, saved.timeRange);
+  // 途徑 A：若 config.js 有設定 webhookRegisterUrl，直接於背景非同步 POST 發信
+  if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.webhookRegisterUrl) {
+    try {
+      await fetch(APP_CONFIG.webhookRegisterUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      finalizeSendSuccess();
+      return;
+    } catch (err) {
+      console.warn("Webhook 背景發送失敗，嘗試備援通道...", err);
+    }
+  }
 
-  // 開啟預填好資料的觸發表單分頁，講師只需點擊「提交」即可啟動發信
-  window.open(urlObj.toString(), '_blank');
+  // 途徑 B：若設定為 triggerFormsUrl (表單觸發)，安全開啟已填好之確認表單
+  if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.triggerFormsUrl && APP_CONFIG.triggerFields) {
+    try {
+      const urlObj = new URL(APP_CONFIG.triggerFormsUrl);
+      const f = APP_CONFIG.triggerFields;
+      if (f.sessionId) urlObj.searchParams.set(f.sessionId, payload.sessionId);
+      if (f.trainingTitle) urlObj.searchParams.set(f.trainingTitle, payload.trainingTitle);
+      if (f.trainerName) urlObj.searchParams.set(f.trainerName, payload.trainerName);
+      if (f.trainerEmail) urlObj.searchParams.set(f.trainerEmail, payload.trainerEmail);
+      if (f.trainingLocation) urlObj.searchParams.set(f.trainingLocation, payload.trainingLocation);
+      if (f.trainingDate) urlObj.searchParams.set(f.trainingDate, payload.trainingDate);
+      if (f.trainingTime) urlObj.searchParams.set(f.trainingTime, payload.trainingTime);
 
-  // 清除本地進行中快取並重設大螢幕
+      window.open(urlObj.toString(), '_blank');
+      finalizeSendSuccess(true);
+      return;
+    } catch (e) {
+      console.error("觸發表單網址解析錯誤：", e);
+    }
+  }
+
+  // 兩者皆未配置時的警告提示
+  alert(currentLang === 'zh' 
+    ? "請先於 config.js 設定 webhookRegisterUrl 或 triggerFormsUrl 方可啟動發信！" 
+    : "Please configure webhookRegisterUrl or triggerFormsUrl in config.js first!");
+}
+
+function finalizeSendSuccess(isFormMode = false) {
   if (timerInterval) clearInterval(timerInterval);
   localStorage.removeItem('JO_CURRENT_SESSION');
-  alert(currentLang === 'zh' ? "已開啟發信確認分頁，請點擊「提交」發送簽到總表！" : "Submission page opened. Please click 'Submit' to send report!");
+  if (isFormMode) {
+    alert(currentLang === 'zh' ? "已開啟發信確認分頁，請點擊「提交」發送簽到總表！" : "Submission page opened. Please click 'Submit' to send report!");
+  } else {
+    alert(currentLang === 'zh' ? "已發送結課訊號，報告將於數分鐘內寄達！" : "Session report is being generated and sent!");
+  }
   location.reload();
 }
 
@@ -312,6 +364,16 @@ function submitRealPlanB() {
     ? APP_CONFIG.sessionFieldKey 
     : "r47260548a38342cfb911e2d607927fcc";
   fallbackUrl.searchParams.set(sessionKey, saved.sessionId);
+
+  // 補簽表單同時將課程名與講師姓名帶入
+  if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.fields) {
+    if (APP_CONFIG.fields.trainingTitle && saved.title) {
+      fallbackUrl.searchParams.set(APP_CONFIG.fields.trainingTitle, saved.title);
+    }
+    if (APP_CONFIG.fields.trainerName && saved.trainer) {
+      fallbackUrl.searchParams.set(APP_CONFIG.fields.trainerName, saved.trainer);
+    }
+  }
 
   window.open(fallbackUrl.toString(), '_blank');
   document.getElementById('manualStaffNo').value = '';

@@ -49,18 +49,18 @@
         <input type="text" id="trainingLocation" placeholder="例如：總辦事處培訓室 / 各地盤會議室">
       </div>
 
-      <!-- 培訓日期（調整至時段上方，預設為今天） -->
+      <!-- 培訓日期（預設為今天） -->
       <div class="form-group">
         <label for="trainingDateInput" id="i18n-lbl-date">培訓日期</label>
         <input type="date" id="trainingDateInput" required>
       </div>
 
-      <!-- 培訓時段：HTML5 原生時間選擇器，自帶 AM/PM 與任意分鐘調節 -->
+      <!-- 培訓時段：HTML5 原生時間選擇器 -->
       <div class="form-group">
         <label id="i18n-lbl-timerange">培訓時段</label>
         <div style="display: flex; align-items: center; gap: 8px;">
           <input type="time" id="timeRangeStart" value="09:30" style="flex: 1;" required>
-          <span style="font-weight: bold; color: #4b5563;">至</span>
+          <span style="font-weight: bold; color: #4b5563;" id="i18n-time-to">至</span>
           <input type="time" id="timeRangeEnd" value="17:30" style="flex: 1;" required>
         </div>
       </div>
@@ -112,20 +112,13 @@
 <div class="modal" id="fallbackModal">
   <div class="modal-content">
     <h3 style="margin-bottom: 8px; font-size: 16px;" id="i18n-modal-title">現場手動補簽 (Plan B)</h3>
-    <p style="font-size: 12px; color: #4b5563; margin-bottom: 12px;" id="i18n-modal-desc">
+    <p style="font-size: 13px; color: #4b5563; line-height: 1.5; margin-bottom: 16px;" id="i18n-modal-desc">
       當前場次：<strong id="modalSessionId" style="color: #003366;"></strong><br>
-      若員工手機無法掃碼，請開啟已預填場次代碼的 Microsoft Forms 官方頁面代填。
+      若個別員工手機無法鏡頭掃碼，點擊下方按鈕將開啟官方簽到表單，場次代碼及課程資料已自動帶入。
     </p>
     
-    <div class="form-group" style="margin-bottom: 8px;">
-      <input type="text" id="manualStaffNo" placeholder="職員編號 (Staff ID)">
-    </div>
-    <div class="form-group" style="margin-bottom: 12px;">
-      <input type="text" id="manualStaffName" placeholder="中文姓名 (Full Name)">
-    </div>
-
     <button class="btn-primary" id="i18n-modal-submit" onclick="submitRealPlanB()">開啟已帶入場次之補簽表單 ↗</button>
-    <button type="button" onclick="closeFallbackModal()" style="width: 100%; background: none; border: none; margin-top: 10px; font-size: 13px; color: #6b7280; cursor: pointer;" id="i18n-modal-cancel">關閉返回投影</button>
+    <button type="button" onclick="closeFallbackModal()" style="width: 100%; background: none; border: none; margin-top: 12px; font-size: 13px; color: #6b7280; cursor: pointer;" id="i18n-modal-cancel">關閉返回投影</button>
   </div>
 </div>
 

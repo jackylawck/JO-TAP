@@ -13,8 +13,8 @@ const APP_CONFIG = {
   // 2. Microsoft Forms 官方表單真實鏈接
   formsBaseUrl: "https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=SekoVCLlN0icGNrZmiJqgHdrsKMMnEBEh_14oAG6bhBUNzJPMVNXSE5JVFNFMEhJWVBMQjFWNjZBSC4u",
   
-  // 3. 欄位 Prefill 映射鍵（請依據貴司 Forms 實際設定對齊）
-  sessionFieldKey: "r_SessionID",
+  // 3. 欄位 Prefill 映射鍵（已更新為 Forms 後台真實題目 GUID）
+  sessionFieldKey: "r47260548a38342cfb911e2d607927fcc",
   fields: {
     trainingTitle: "r_TrainingTitle",
     trainerEmail: "r_TrainerEmail",

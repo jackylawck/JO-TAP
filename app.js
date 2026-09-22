@@ -78,6 +78,10 @@ function switchLanguage(lang) {
   setPlaceholder('trainerName', dict.trainerPlaceholder);
   setInnerText('i18n-lbl-email', dict.lblEmail);
   setPlaceholder('trainerEmailPrefix', dict.emailPlaceholder);
+  setInnerText('i18n-lbl-location', dict.lblLocation || "培訓地點");
+  setPlaceholder('trainingLocation', dict.locationPlaceholder || "例如：總辦事處培訓室");
+  setInnerText('i18n-lbl-timerange', dict.lblTimeRange || "培訓時段");
+  setPlaceholder('trainingTimeRange', dict.timeRangePlaceholder || "例如：09:30 - 17:30");
   setInnerText('i18n-lbl-cutoff-date', dict.lblCutoffDate);
   setInnerText('i18n-lbl-cutoff', dict.lblCutoff);
   setInnerText('i18n-btn-start', dict.btnStart);
@@ -122,6 +126,8 @@ async function startSession() {
   const title = document.getElementById('trainingTitle').value.trim();
   const trainer = document.getElementById('trainerName').value.trim();
   const prefix = document.getElementById('trainerEmailPrefix').value.trim();
+  const location = document.getElementById('trainingLocation').value.trim() || "總辦事處培訓室";
+  const timeRange = document.getElementById('trainingTimeRange').value.trim() || "09:30 - 17:30";
   const cutoffDateVal = document.getElementById('cutoffDateInput')?.value;
   const cutoffTimeVal = document.getElementById('cutoffTimeSelect')?.value || "17:30";
 
@@ -147,7 +153,7 @@ async function startSession() {
   const hkDate = getHKDateString();
   const sessionId = `TRN-${hkDate}-${getSafeUUID()}`;
   
-  // 關鍵改動：生成 URL 時同時傳入 title 與 trainer 姓名
+  // 生成 URL 時同時帶入場次代碼、課程名、講師名
   const finalUrl = buildFormsUrl(sessionId, title, trainer, trainerEmail, "Self");
 
   const sessionData = {
@@ -155,6 +161,9 @@ async function startSession() {
     title,
     trainer,
     trainerEmail,
+    location,
+    timeRange,
+    trainingDate: cutoffDateVal,
     url: finalUrl,
     hkDate,
     createdAt: new Date().getTime(),
@@ -192,7 +201,6 @@ function buildFormsUrl(sessionId, title, trainerName, trainerEmail, signType) {
     if (APP_CONFIG.fields.trainerName) {
       urlObj.searchParams.set(APP_CONFIG.fields.trainerName, trainerName);
     }
-    // 預留欄位
     if (APP_CONFIG.fields.trainerEmail && !APP_CONFIG.fields.trainerEmail.startsWith("r_")) {
       urlObj.searchParams.set(APP_CONFIG.fields.trainerEmail, trainerEmail);
     }
@@ -214,6 +222,9 @@ function registerSessionBackend(data) {
       trainingTitle: data.title,
       trainerName: data.trainer,
       trainerEmail: data.trainerEmail,
+      trainingDate: data.trainingDate,
+      trainingTime: data.timeRange,
+      trainingLocation: data.location,
       cutoffIso: new Date(data.cutoffTimestamp).toISOString()
     })
   }).catch(() => {
@@ -231,6 +242,12 @@ function renderActive(data) {
 
   document.getElementById('lblSession').innerText = data.sessionId;
   document.getElementById('lblTitle').innerText = data.title;
+  
+  // 顯示地點與時段備註
+  const subMeta = document.getElementById('lblSubMeta');
+  if (subMeta) {
+    subMeta.innerText = `地點：${data.location} | 時段：${data.timeRange} | 日期：${data.trainingDate}`;
+  }
 
   const qrBox = document.getElementById('qrcode-box');
   qrBox.innerHTML = '';
@@ -301,6 +318,9 @@ function extendSession30Min() {
   }
 }
 
+/**
+ * 提前完課按鈕：直接打包首頁設定的所有參數（包括地點、時間、日期）背景送出
+ */
 function triggerEarlyEnd() {
   const dict = I18N_DICT[currentLang];
   if (!confirm(dict.confirmEarlyEnd)) return;
@@ -315,7 +335,11 @@ function triggerEarlyEnd() {
         action: "EXECUTE_NOW",
         sessionId: saved.sessionId,
         trainingTitle: saved.title,
-        trainerEmail: saved.trainerEmail
+        trainerName: saved.trainer,
+        trainerEmail: saved.trainerEmail,
+        trainingDate: saved.trainingDate,
+        trainingTime: saved.timeRange,
+        trainingLocation: saved.location
       })
     }).catch(() => {});
   }

@@ -49,41 +49,13 @@
         <input type="text" id="trainingLocation" placeholder="例如：總辦事處培訓室 / 各地盤會議室">
       </div>
 
-      <!-- 培訓時段：改為固定格式的雙下拉選單 -->
+      <!-- 培訓時段：改為 HTML5 原生時間選擇器，自帶 AM/PM 與任意分鐘調節 -->
       <div class="form-group">
         <label id="i18n-lbl-timerange">培訓時段</label>
         <div style="display: flex; align-items: center; gap: 8px;">
-          <select id="timeRangeStart" style="flex: 1;">
-            <option value="08:00">08:00 AM</option>
-            <option value="08:30">08:30 AM</option>
-            <option value="09:00">09:00 AM</option>
-            <option value="09:30" selected>09:30 AM</option>
-            <option value="10:00">10:00 AM</option>
-            <option value="10:30">10:30 AM</option>
-            <option value="11:00">11:00 AM</option>
-            <option value="11:30">11:30 AM</option>
-            <option value="12:00">12:00 PM</option>
-            <option value="13:00">01:00 PM</option>
-            <option value="14:00">02:00 PM</option>
-            <option value="14:30">02:30 PM</option>
-            <option value="15:00">03:00 PM</option>
-          </select>
+          <input type="time" id="timeRangeStart" value="09:30" style="flex: 1;" required>
           <span style="font-weight: bold; color: #4b5563;">至</span>
-          <select id="timeRangeEnd" style="flex: 1;">
-            <option value="10:30">10:30 AM</option>
-            <option value="11:00">11:00 AM</option>
-            <option value="11:30">11:30 AM</option>
-            <option value="12:00">12:00 PM</option>
-            <option value="12:30">12:30 PM</option>
-            <option value="13:00">01:00 PM</option>
-            <option value="16:00">04:00 PM</option>
-            <option value="16:30">04:30 PM</option>
-            <option value="17:00">05:00 PM</option>
-            <option value="17:30" selected>05:30 PM</option>
-            <option value="18:00">06:00 PM</option>
-            <option value="19:00">07:00 PM</option>
-            <option value="20:00">08:00 PM</option>
-          </select>
+          <input type="time" id="timeRangeEnd" value="17:30" style="flex: 1;" required>
         </div>
       </div>
 

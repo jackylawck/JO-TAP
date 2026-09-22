@@ -6,19 +6,23 @@ let countdownInterval = null;
 
 window.addEventListener('DOMContentLoaded', () => {
   switchLanguage(currentLang);
-  initDefaultCutoffTime();
+  initDefaultCutoffDateTime();
 
-  // 自動回填上次記錄的講者資料
-  document.getElementById('trainerName').value = localStorage.getItem('JO_LAST_TRAINER') || '';
-  document.getElementById('trainerEmailPrefix').value = localStorage.getItem('JO_LAST_PREFIX') || '';
+  // 徹底移除自動回填個人資料：清空舊殘留快取並重設輸入框為空白
+  localStorage.removeItem('JO_LAST_TRAINER');
+  localStorage.removeItem('JO_LAST_PREFIX');
+  const trainerInput = document.getElementById('trainerName');
+  const prefixInput = document.getElementById('trainerEmailPrefix');
+  if (trainerInput) trainerInput.value = '';
+  if (prefixInput) prefixInput.value = '';
 
-  // 檢查有無進行中場次
+  // 檢查有無進行中場次（未過期即恢復）
   const saved = localStorage.getItem('JO_CURRENT_SESSION');
   if (saved) {
     try {
       const data = JSON.parse(saved);
       const now = new Date().getTime();
-      if (data.hkDate === getHKDateString() && now < data.cutoffTimestamp) {
+      if (now < data.cutoffTimestamp) {
         renderActive(data);
       } else {
         localStorage.removeItem('JO_CURRENT_SESSION');
@@ -29,17 +33,30 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-function initDefaultCutoffTime() {
-  const cutoffSelect = document.getElementById('cutoffTimeSelect');
-  if (!cutoffSelect) return;
-  const currentHour = new Date().getHours();
+// 初始化預設截單日期（今天）與時間
+function initDefaultCutoffDateTime() {
+  const dateInput = document.getElementById('cutoffDateInput');
+  const timeSelect = document.getElementById('cutoffTimeSelect');
+  
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  
+  if (dateInput) {
+    dateInput.value = `${year}-${month}-${day}`;
+    dateInput.min = `${year}-${month}-${day}`; // 限制不可選過去日期
+  }
 
-  if (currentHour < 12) {
-    cutoffSelect.value = "12:30";
-  } else if (currentHour < 17) {
-    cutoffSelect.value = "17:30";
-  } else {
-    cutoffSelect.value = "19:00";
+  if (timeSelect) {
+    const currentHour = now.getHours();
+    if (currentHour < 12) {
+      timeSelect.value = "12:30";
+    } else if (currentHour < 17) {
+      timeSelect.value = "17:30";
+    } else {
+      timeSelect.value = "21:00";
+    }
   }
 }
 
@@ -61,6 +78,7 @@ function switchLanguage(lang) {
   setPlaceholder('trainerName', dict.trainerPlaceholder);
   setInnerText('i18n-lbl-email', dict.lblEmail);
   setPlaceholder('trainerEmailPrefix', dict.emailPlaceholder);
+  setInnerText('i18n-lbl-cutoff-date', dict.lblCutoffDate);
   setInnerText('i18n-lbl-cutoff', dict.lblCutoff);
   setInnerText('i18n-btn-start', dict.btnStart);
   setInnerHtml('i18n-idle-text', dict.idleText);
@@ -104,27 +122,27 @@ async function startSession() {
   const title = document.getElementById('trainingTitle').value.trim();
   const trainer = document.getElementById('trainerName').value.trim();
   const prefix = document.getElementById('trainerEmailPrefix').value.trim();
+  const cutoffDateVal = document.getElementById('cutoffDateInput')?.value;
   const cutoffTimeVal = document.getElementById('cutoffTimeSelect')?.value || "17:30";
 
-  if (!title || !trainer || !prefix) {
-    alert(dict.alertInput);
+  if (!title || !trainer || !prefix || !cutoffDateVal) {
+    alert(dict.alertInput || "請完整填寫課程資料、講者資訊及截單時間！");
     return;
   }
 
   const domain = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.emailDomain) ? APP_CONFIG.emailDomain : "@jumboorient.com.hk";
   const trainerEmail = `${prefix}${domain}`;
-  localStorage.setItem('JO_LAST_TRAINER', trainer);
-  localStorage.setItem('JO_LAST_PREFIX', prefix);
 
-  const now = new Date();
+  // 結合自選日期 (YYYY-MM-DD) 與時間 (HH:mm) 計算截止絕對毫秒數
   const [targetH, targetM] = cutoffTimeVal.split(':').map(Number);
-  const cutoffDate = new Date();
-  cutoffDate.setHours(targetH, targetM, 0, 0);
-
-  if (cutoffDate.getTime() <= now.getTime()) {
-    cutoffDate.setDate(cutoffDate.getDate() + 1);
-  }
+  const [y, m, d] = cutoffDateVal.split('-').map(Number);
+  const cutoffDate = new Date(y, m - 1, d, targetH, targetM, 0, 0);
   const cutoffTimestamp = cutoffDate.getTime();
+
+  if (cutoffTimestamp <= new Date().getTime()) {
+    alert(currentLang === 'zh' ? "截單時間不能早於當前時間！" : "Cutoff time cannot be in the past!");
+    return;
+  }
 
   const hkDate = getHKDateString();
   const sessionId = `TRN-${hkDate}-${getSafeUUID()}`;
@@ -137,9 +155,9 @@ async function startSession() {
     trainerEmail,
     url: finalUrl,
     hkDate,
-    createdAt: now.getTime(),
+    createdAt: new Date().getTime(),
     cutoffTimestamp,
-    cutoffTimeString: cutoffTimeVal
+    cutoffTimeString: `${cutoffDateVal} ${cutoffTimeVal}`
   };
 
   localStorage.setItem('JO_CURRENT_SESSION', JSON.stringify(sessionData));
@@ -221,11 +239,13 @@ function startCountdown(cutoffTimestamp) {
       clearInterval(countdownInterval);
       return;
     }
-    const h = Math.floor(diff / 3600000);
+    const d = Math.floor(diff / (3600000 * 24));
+    const h = Math.floor((diff % (3600000 * 24)) / 3600000);
     const m = Math.floor((diff % 3600000) / 60000);
     const s = Math.floor((diff % 60000) / 1000);
+
     if (timerLabel) {
-      timerLabel.innerText = `${h}h ${m}m ${s}s`;
+      timerLabel.innerText = d > 0 ? `${d}d ${h}h ${m}m ${s}s` : `${h}h ${m}m ${s}s`;
     }
   }
   update();
@@ -299,7 +319,6 @@ function endSession() {
 }
 
 function openFallbackModal() {
-  const dict = I18N_DICT[currentLang];
   const saved = JSON.parse(localStorage.getItem('JO_CURRENT_SESSION') || '{}');
   const sessionText = saved.sessionId || 'N/A';
   document.getElementById('modalSessionId').innerText = sessionText;

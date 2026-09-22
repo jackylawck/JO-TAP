@@ -8,7 +8,7 @@ window.addEventListener('DOMContentLoaded', () => {
   switchLanguage(currentLang);
   initDefaultCutoffTime();
 
-  // 讀取上次記錄的講者
+  // 自動回填上次記錄的講者資料
   document.getElementById('trainerName').value = localStorage.getItem('JO_LAST_TRAINER') || '';
   document.getElementById('trainerEmailPrefix').value = localStorage.getItem('JO_LAST_PREFIX') || '';
 
@@ -32,8 +32,7 @@ window.addEventListener('DOMContentLoaded', () => {
 function initDefaultCutoffTime() {
   const cutoffSelect = document.getElementById('cutoffTimeSelect');
   if (!cutoffSelect) return;
-  const now = new Date();
-  const currentHour = now.getHours();
+  const currentHour = new Date().getHours();
 
   if (currentHour < 12) {
     cutoffSelect.value = "12:30";
@@ -68,6 +67,7 @@ function switchLanguage(lang) {
   setInnerText('i18n-scan-hint', dict.scanHint);
   setInnerText('i18n-privacy-text', dict.privacyText);
   setInnerText('i18n-paper-alert', dict.paperAlert);
+  setInnerText('i18n-cutoff-notice', dict.cutoffNotice);
   setInnerText('i18n-btn-fs', dict.btnFs);
   setInnerText('i18n-btn-planb', dict.btnPlanB);
   setInnerText('i18n-btn-extend', dict.btnExtend);
@@ -80,25 +80,21 @@ function switchLanguage(lang) {
   setInnerText('i18n-modal-cancel', dict.modalCancel);
 }
 
-function setInnerText(id, text) {
-  const el = document.getElementById(id);
-  if (el && text) el.innerText = text;
-}
-function setInnerHtml(id, html) {
-  const el = document.getElementById(id);
-  if (el && html) el.innerHTML = html;
-}
-function setPlaceholder(id, ph) {
-  const el = document.getElementById(id);
-  if (el && ph) el.placeholder = ph;
+function setInnerText(id, text) { const el = document.getElementById(id); if (el && text) el.innerText = text; }
+function setInnerHtml(id, html) { const el = document.getElementById(id); if (el && html) el.innerHTML = html; }
+function setPlaceholder(id, ph) { const el = document.getElementById(id); if (el && ph) el.placeholder = ph; }
+
+function getSafeUUID() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID().split('-')[0].toUpperCase();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).substr(2, 4)}`.toUpperCase();
 }
 
 function getHKDateString() {
   const f = new Intl.DateTimeFormat('en-CA', { 
     timeZone: 'Asia/Hong_Kong', 
-    year: 'numeric', 
-    month: '2-digit', 
-    day: '2-digit' 
+    year: 'numeric', month: '2-digit', day: '2-digit' 
   });
   return f.format(new Date()).replace(/-/g, '');
 }
@@ -108,14 +104,15 @@ async function startSession() {
   const title = document.getElementById('trainingTitle').value.trim();
   const trainer = document.getElementById('trainerName').value.trim();
   const prefix = document.getElementById('trainerEmailPrefix').value.trim();
-  const cutoffTimeVal = document.getElementById('cutoffTimeSelect') ? document.getElementById('cutoffTimeSelect').value : "17:30";
+  const cutoffTimeVal = document.getElementById('cutoffTimeSelect')?.value || "17:30";
 
   if (!title || !trainer || !prefix) {
     alert(dict.alertInput);
     return;
   }
 
-  const trainerEmail = `${prefix}@jumboorient.com.hk`;
+  const domain = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.emailDomain) ? APP_CONFIG.emailDomain : "@jumboorient.com.hk";
+  const trainerEmail = `${prefix}${domain}`;
   localStorage.setItem('JO_LAST_TRAINER', trainer);
   localStorage.setItem('JO_LAST_PREFIX', prefix);
 
@@ -130,7 +127,7 @@ async function startSession() {
   const cutoffTimestamp = cutoffDate.getTime();
 
   const hkDate = getHKDateString();
-  const sessionId = `TRN-${hkDate}-${crypto.randomUUID().split('-')[0].toUpperCase()}`;
+  const sessionId = `TRN-${hkDate}-${getSafeUUID()}`;
   const finalUrl = buildFormsUrl(sessionId, title, trainerEmail, "Self");
 
   const sessionData = {
@@ -153,19 +150,20 @@ async function startSession() {
 }
 
 function buildFormsUrl(sessionId, title, trainerEmail, signType) {
-  const urlObj = new URL(APP_CONFIG.formsBaseUrl);
-  urlObj.searchParams.set(APP_CONFIG.sessionFieldKey, sessionId);
-  if (APP_CONFIG.fields && APP_CONFIG.fields.trainerEmail) {
-    urlObj.searchParams.set(APP_CONFIG.fields.trainerEmail, trainerEmail);
-  }
-  if (APP_CONFIG.fields && APP_CONFIG.fields.signSource) {
-    urlObj.searchParams.set(APP_CONFIG.fields.signSource, signType);
+  const baseUrl = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.formsBaseUrl) ? APP_CONFIG.formsBaseUrl : "https://forms.office.com/Pages/ResponsePage.aspx";
+  const urlObj = new URL(baseUrl);
+  const sessionKey = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.sessionFieldKey) ? APP_CONFIG.sessionFieldKey : "r_SessionID";
+  
+  urlObj.searchParams.set(sessionKey, sessionId);
+  if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.fields) {
+    if (APP_CONFIG.fields.trainerEmail) urlObj.searchParams.set(APP_CONFIG.fields.trainerEmail, trainerEmail);
+    if (APP_CONFIG.fields.signSource) urlObj.searchParams.set(APP_CONFIG.fields.signSource, signType);
   }
   return urlObj.toString();
 }
 
 function registerSessionBackend(data) {
-  if (!APP_CONFIG.webhookRegisterUrl) return;
+  if (typeof APP_CONFIG === 'undefined' || !APP_CONFIG.webhookRegisterUrl) return;
   fetch(APP_CONFIG.webhookRegisterUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -247,7 +245,7 @@ function extendSession30Min() {
 
   alert(`${I18N_DICT[currentLang].extendSuccess} ${timeStr}`);
 
-  if (APP_CONFIG.webhookRegisterUrl) {
+  if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.webhookRegisterUrl) {
     fetch(APP_CONFIG.webhookRegisterUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -266,7 +264,7 @@ function triggerEarlyEnd() {
 
   const saved = JSON.parse(localStorage.getItem('JO_CURRENT_SESSION') || '{}');
 
-  if (APP_CONFIG.webhookRegisterUrl) {
+  if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.webhookRegisterUrl) {
     fetch(APP_CONFIG.webhookRegisterUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -303,7 +301,8 @@ function endSession() {
 function openFallbackModal() {
   const dict = I18N_DICT[currentLang];
   const saved = JSON.parse(localStorage.getItem('JO_CURRENT_SESSION') || '{}');
-  document.getElementById('i18n-modal-desc').innerHTML = dict.modalDesc.replace('{SESSION}', saved.sessionId || 'N/A');
+  const sessionText = saved.sessionId || 'N/A';
+  document.getElementById('modalSessionId').innerText = sessionText;
   document.getElementById('fallbackModal').style.display = 'flex';
 }
 
@@ -321,13 +320,18 @@ function submitRealPlanB() {
     return;
   }
 
-  const fallbackUrl = new URL(APP_CONFIG.fallbackFormsUrl || APP_CONFIG.formsBaseUrl);
-  fallbackUrl.searchParams.set(APP_CONFIG.sessionFieldKey, saved.sessionId);
-  if (APP_CONFIG.fallbackFields) {
-    fallbackUrl.searchParams.set(APP_CONFIG.fallbackFields.staffNo, staffNo);
-    fallbackUrl.searchParams.set(APP_CONFIG.fallbackFields.staffName, staffName);
+  const base = (typeof APP_CONFIG !== 'undefined' && (APP_CONFIG.fallbackFormsUrl || APP_CONFIG.formsBaseUrl)) 
+    ? (APP_CONFIG.fallbackFormsUrl || APP_CONFIG.formsBaseUrl) 
+    : "https://forms.office.com/Pages/ResponsePage.aspx";
+  const fallbackUrl = new URL(base);
+  const sessionKey = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.sessionFieldKey) ? APP_CONFIG.sessionFieldKey : "r_SessionID";
+
+  fallbackUrl.searchParams.set(sessionKey, saved.sessionId);
+  if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.fallbackFields) {
+    if (APP_CONFIG.fallbackFields.staffNo) fallbackUrl.searchParams.set(APP_CONFIG.fallbackFields.staffNo, staffNo);
+    if (APP_CONFIG.fallbackFields.staffName) fallbackUrl.searchParams.set(APP_CONFIG.fallbackFields.staffName, staffName);
   }
-  if (APP_CONFIG.fields && APP_CONFIG.fields.signSource) {
+  if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.fields && APP_CONFIG.fields.signSource) {
     fallbackUrl.searchParams.set(APP_CONFIG.fields.signSource, "Manual");
   }
 

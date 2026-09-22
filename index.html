@@ -43,54 +43,54 @@
         </div>
       </div>
 
-      <!-- 新增：培訓地點（預設常設地點） -->
+      <!-- 培訓地點：任填，預設空白提示 -->
       <div class="form-group">
         <label for="trainingLocation" id="i18n-lbl-location">培訓地點</label>
-        <input type="text" id="trainingLocation" value="總辦事處培訓室" placeholder="例如：總辦事處培訓室 / 各地盤會議室" required>
+        <input type="text" id="trainingLocation" placeholder="例如：總辦事處培訓室 / 各地盤會議室">
       </div>
 
-      <!-- 新增：培訓時段說明（預設 09:30 - 17:30） -->
+      <!-- 培訓時段：改為固定格式的雙下拉選單 -->
       <div class="form-group">
-        <label for="trainingTimeRange" id="i18n-lbl-timerange">培訓時段</label>
-        <input type="text" id="trainingTimeRange" value="09:30 - 17:30" placeholder="例如：09:30 - 17:30 / 全日" required>
+        <label id="i18n-lbl-timerange">培訓時段</label>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <select id="timeRangeStart" style="flex: 1;">
+            <option value="08:00">08:00 AM</option>
+            <option value="08:30">08:30 AM</option>
+            <option value="09:00">09:00 AM</option>
+            <option value="09:30" selected>09:30 AM</option>
+            <option value="10:00">10:00 AM</option>
+            <option value="10:30">10:30 AM</option>
+            <option value="11:00">11:00 AM</option>
+            <option value="11:30">11:30 AM</option>
+            <option value="12:00">12:00 PM</option>
+            <option value="13:00">01:00 PM</option>
+            <option value="14:00">02:00 PM</option>
+            <option value="14:30">02:30 PM</option>
+            <option value="15:00">03:00 PM</option>
+          </select>
+          <span style="font-weight: bold; color: #4b5563;">至</span>
+          <select id="timeRangeEnd" style="flex: 1;">
+            <option value="10:30">10:30 AM</option>
+            <option value="11:00">11:00 AM</option>
+            <option value="11:30">11:30 AM</option>
+            <option value="12:00">12:00 PM</option>
+            <option value="12:30">12:30 PM</option>
+            <option value="13:00">01:00 PM</option>
+            <option value="16:00">04:00 PM</option>
+            <option value="16:30">04:30 PM</option>
+            <option value="17:00">05:00 PM</option>
+            <option value="17:30" selected>05:30 PM</option>
+            <option value="18:00">06:00 PM</option>
+            <option value="19:00">07:00 PM</option>
+            <option value="20:00">08:00 PM</option>
+          </select>
+        </div>
       </div>
 
-      <!-- 自選截單日期 -->
+      <!-- 培訓日期（預設為今天） -->
       <div class="form-group">
-        <label for="cutoffDateInput" id="i18n-lbl-cutoff-date">預計完課截單日期</label>
-        <input type="date" id="cutoffDateInput" required>
-      </div>
-
-      <!-- 10:00 AM 至 10:00 PM 完課截單時間 -->
-      <div class="form-group">
-        <label for="cutoffTimeSelect" id="i18n-lbl-cutoff">預計完課截單時間 (10:00 AM - 10:00 PM)</label>
-        <select id="cutoffTimeSelect">
-          <option value="10:00">10:00 AM</option>
-          <option value="10:30">10:30 AM</option>
-          <option value="11:00">11:00 AM</option>
-          <option value="11:30">11:30 AM</option>
-          <option value="12:00">12:00 PM (正午)</option>
-          <option value="12:30">12:30 PM (上午半日)</option>
-          <option value="13:00">01:00 PM</option>
-          <option value="13:30">01:30 PM</option>
-          <option value="14:00">02:00 PM</option>
-          <option value="14:30">02:30 PM</option>
-          <option value="15:00">03:00 PM</option>
-          <option value="15:30">03:30 PM</option>
-          <option value="16:00">04:00 PM</option>
-          <option value="16:30">04:30 PM</option>
-          <option value="17:00">05:00 PM (常規下課)</option>
-          <option value="17:30" selected>05:30 PM (全日推薦)</option>
-          <option value="18:00">06:00 PM (傍晚完課)</option>
-          <option value="18:30">06:30 PM</option>
-          <option value="19:00">07:00 PM</option>
-          <option value="19:30">07:30 PM</option>
-          <option value="20:00">08:00 PM</option>
-          <option value="20:30">08:30 PM</option>
-          <option value="21:00">09:00 PM</option>
-          <option value="21:30">09:30 PM</option>
-          <option value="22:00">10:00 PM (夜間截單)</option>
-        </select>
+        <label for="trainingDateInput" id="i18n-lbl-date">培訓日期</label>
+        <input type="date" id="trainingDateInput" required>
       </div>
 
       <button class="btn-primary" id="i18n-btn-start" onclick="startSession()">🚀 一鍵生成並全螢幕投影</button>
@@ -114,7 +114,7 @@
         <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 6px;" id="i18n-scan-subhint">如遇網絡微弱，請連接現場公司 Wi-Fi 重新載入</p>
         
         <div style="font-size: 13px; font-weight: 600; color: #003366; margin-bottom: 10px;">
-          <span id="i18n-cutoff-notice">預計自動截單發信時間：</span><span id="lblTimer">--</span>
+          <span id="i18n-cutoff-notice">課堂進行時間：</span><span id="lblTimer">00:00</span>
         </div>
 
         <p class="privacy-text" id="i18n-privacy-text" style="font-size: 11px; color: #6b7280; line-height: 1.4; border-top: 1px dashed #e5e7eb; padding-top: 8px;">
@@ -128,8 +128,7 @@
         <div class="action-links">
           <button type="button" onclick="executeFullscreen()" id="i18n-btn-fs">全螢幕投影</button>
           <button type="button" onclick="openFallbackModal()" id="i18n-btn-planb">現場手動補簽 (Plan B)</button>
-          <button type="button" onclick="extendSession30Min()" id="i18n-btn-extend">⏱️ 課堂延鐘 (+30分)</button>
-          <button type="button" onclick="triggerEarlyEnd()" id="i18n-btn-early-end">✉️ 提前完課並立即發信</button>
+          <button type="button" onclick="triggerImmediateSend()" id="i18n-btn-early-end">✉️ 立即發信</button>
           <button type="button" onclick="endSession()" style="color: #dc2626;" id="i18n-btn-end">結束本場培訓</button>
         </div>
       </div>

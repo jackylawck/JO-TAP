@@ -133,8 +133,8 @@ async function startSession() {
   const hkDate = getHKDateString();
   const sessionId = `TRN-${hkDate}-${getSafeUUID()}`;
   
-  // 生成包含場次、課程名、講師名的 Forms Prefill URL
-  const finalUrl = buildFormsUrl(sessionId, title, trainer, trainerEmail, "Self");
+  // 生成學員 Forms Prefill URL (只帶入 SessionID)
+  const finalUrl = buildFormsUrl(sessionId);
 
   const sessionData = {
     sessionId,
@@ -150,63 +150,26 @@ async function startSession() {
   };
 
   localStorage.setItem('JO_CURRENT_SESSION', JSON.stringify(sessionData));
-  registerSessionBackend(sessionData);
 
   renderActive(sessionData);
   executeFullscreen();
 }
 
 /**
- * 構建帶有真實 GUID 的 Forms 預填網址
+ * 構建帶有真實 GUID 的 Forms 預填網址 (學員端僅需 SessionID)
  */
-function buildFormsUrl(sessionId, title, trainerName, trainerEmail, signType) {
+function buildFormsUrl(sessionId) {
   const baseUrl = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.formsBaseUrl) 
     ? APP_CONFIG.formsBaseUrl 
     : "https://forms.cloud.microsoft/Pages/ResponsePage.aspx";
   const urlObj = new URL(baseUrl);
   
-  // 1. 場次編號 (code)
   const sessionKey = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.sessionFieldKey) 
     ? APP_CONFIG.sessionFieldKey 
     : "r47260548a38342cfb911e2d607927fcc";
   urlObj.searchParams.set(sessionKey, sessionId);
 
-  // 2. 課程名稱 (class) 與主講者姓名 (tname)
-  if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.fields) {
-    if (APP_CONFIG.fields.trainingTitle) {
-      urlObj.searchParams.set(APP_CONFIG.fields.trainingTitle, title);
-    }
-    if (APP_CONFIG.fields.trainerName) {
-      urlObj.searchParams.set(APP_CONFIG.fields.trainerName, trainerName);
-    }
-    if (APP_CONFIG.fields.trainerEmail && !APP_CONFIG.fields.trainerEmail.startsWith("r_")) {
-      urlObj.searchParams.set(APP_CONFIG.fields.trainerEmail, trainerEmail);
-    }
-    if (APP_CONFIG.fields.signSource && !APP_CONFIG.fields.signSource.startsWith("r_")) {
-      urlObj.searchParams.set(APP_CONFIG.fields.signSource, signType);
-    }
-  }
   return urlObj.toString();
-}
-
-function registerSessionBackend(data) {
-  if (typeof APP_CONFIG === 'undefined' || !APP_CONFIG.webhookRegisterUrl) return;
-  fetch(APP_CONFIG.webhookRegisterUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      action: "REGISTER_SESSION",
-      sessionId: data.sessionId,
-      trainingTitle: data.title,
-      trainerName: data.trainer,
-      trainerEmail: data.trainerEmail,
-      trainingDate: data.trainingDate,
-      trainingTime: data.timeRange,
-      trainingLocation: data.location
-    })
-  }).catch(() => {
-    console.warn("後端註冊離線，系統維持本地運作。");
-  });
 }
 
 function renderActive(data) {
@@ -268,33 +231,38 @@ function startElapsedTimer(startTime) {
 }
 
 /**
- * ✉️ 立即發信：直接打包所有課堂資料傳送至 Webhook
+ * ✉️ 立即發信：自動組裝所有參數，透過免費觸發表單啟動發信流程
  */
 function triggerImmediateSend() {
   const dict = I18N_DICT[currentLang];
   if (!confirm(dict.confirmImmediateSend)) return;
 
   const saved = JSON.parse(localStorage.getItem('JO_CURRENT_SESSION') || '{}');
-
-  if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.webhookRegisterUrl) {
-    fetch(APP_CONFIG.webhookRegisterUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: "EXECUTE_NOW",
-        sessionId: saved.sessionId,
-        trainingTitle: saved.title,
-        trainerName: saved.trainer,
-        trainerEmail: saved.trainerEmail,
-        trainingDate: saved.trainingDate,
-        trainingTime: saved.timeRange,
-        trainingLocation: saved.location
-      })
-    }).catch(() => {});
+  if (!saved.sessionId) {
+    alert(currentLang === 'zh' ? "找不到進行中的場次！" : "No active session found!");
+    return;
   }
 
+  // 構建帶有完整 7 項資料的 Trigger Forms 預填網址
+  const triggerBase = APP_CONFIG.triggerFormsUrl;
+  const urlObj = new URL(triggerBase);
+  const f = APP_CONFIG.triggerFields;
+
+  urlObj.searchParams.set(f.sessionId, saved.sessionId);
+  urlObj.searchParams.set(f.trainingTitle, saved.title);
+  urlObj.searchParams.set(f.trainerName, saved.trainer);
+  urlObj.searchParams.set(f.trainerEmail, saved.trainerEmail);
+  urlObj.searchParams.set(f.trainingLocation, saved.location);
+  urlObj.searchParams.set(f.trainingDate, saved.trainingDate);
+  urlObj.searchParams.set(f.trainingTime, saved.timeRange);
+
+  // 開啟預填好資料的觸發表單分頁，講師只需點擊「提交」即可啟動發信
+  window.open(urlObj.toString(), '_blank');
+
+  // 清除本地進行中快取並重設大螢幕
+  if (timerInterval) clearInterval(timerInterval);
   localStorage.removeItem('JO_CURRENT_SESSION');
-  alert(currentLang === 'zh' ? "已發送結課訊號，報告將於數分鐘內寄達！" : "Session report is being generated and sent!");
+  alert(currentLang === 'zh' ? "已開啟發信確認分頁，請點擊「提交」發送簽到總表！" : "Submission page opened. Please click 'Submit' to send report!");
   location.reload();
 }
 
@@ -340,21 +308,10 @@ function submitRealPlanB() {
     : "https://forms.cloud.microsoft/Pages/ResponsePage.aspx";
   const fallbackUrl = new URL(base);
 
-  // 1. 場次編號
   const sessionKey = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.sessionFieldKey) 
     ? APP_CONFIG.sessionFieldKey 
     : "r47260548a38342cfb911e2d607927fcc";
   fallbackUrl.searchParams.set(sessionKey, saved.sessionId);
-
-  // 2. 課程名稱與講師姓名
-  if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.fields) {
-    if (APP_CONFIG.fields.trainingTitle) {
-      fallbackUrl.searchParams.set(APP_CONFIG.fields.trainingTitle, saved.title);
-    }
-    if (APP_CONFIG.fields.trainerName) {
-      fallbackUrl.searchParams.set(APP_CONFIG.fields.trainerName, saved.trainer);
-    }
-  }
 
   window.open(fallbackUrl.toString(), '_blank');
   document.getElementById('manualStaffNo').value = '';
